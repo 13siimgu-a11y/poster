@@ -1,4 +1,5 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { ROLE_PERMISSIONS } from "./permissions.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
@@ -6,7 +7,7 @@ export const EMPLOYEE_STATUSES = ["working", "vacation", "sick", "fired", "block
 
 export function loadEmployees(companyId = null) {
     const employees = storage.get(STORAGE_KEYS.employees, []);
-    return companyId ? employees.filter((employee) => Number(employee.companyId) === Number(companyId)) : employees;
+    return companyId ? employees.filter((employee) => idsEqual(employee.companyId, companyId)) : employees;
 }
 
 export function generatePin() {
@@ -18,7 +19,7 @@ export function createEmployee(companyId, data) {
     const role = data.role || "waiter";
     const employee = {
         id: employees.length ? Math.max(...employees.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
+        companyId,
         firstName: data.firstName?.trim() || "",
         lastName: data.lastName?.trim() || "",
         middleName: data.middleName || "",
@@ -27,7 +28,7 @@ export function createEmployee(companyId, data) {
         phone: data.phone || "",
         email: data.email || "",
         address: data.address || "",
-        positionId: Number(data.positionId || 0),
+        positionId: data.positionId || 0,
         role,
         status: data.status || "working",
         employeeNumber: data.employeeNumber || `EMP-${String(employees.length + 1).padStart(4, "0")}`,
@@ -43,6 +44,7 @@ export function createEmployee(companyId, data) {
     };
 
     storage.set(STORAGE_KEYS.employees, [...employees, employee]);
+    mirrorCreate("employees", companyId, employee);
     addStaffHistory(companyId, employee.id, "Создан сотрудник");
     createLog("Создал сотрудника", { companyId, employee: `${employee.firstName} ${employee.lastName}` });
     return employee;
@@ -62,6 +64,7 @@ export function updateEmployee(employeeId, data) {
     };
 
     storage.set(STORAGE_KEYS.employees, employees);
+    mirrorUpdate("employees", employees[index].companyId, employees[index]);
     addStaffHistory(employees[index].companyId, employees[index].id, "Изменен сотрудник");
     return employees[index];
 }
@@ -71,6 +74,7 @@ export function deleteEmployee(employeeId) {
     const employee = employees.find((item) => Number(item.id) === Number(employeeId));
     if (!employee) return false;
     storage.set(STORAGE_KEYS.employees, employees.filter((item) => Number(item.id) !== Number(employeeId)));
+    mirrorDelete("employees", employee.companyId, employee);
     addStaffHistory(employee.companyId, employee.id, "Удален сотрудник");
     return true;
 }
@@ -79,8 +83,8 @@ export function addStaffHistory(companyId, employeeId, action, details = {}) {
     const history = storage.get(STORAGE_KEYS.staffHistory, []);
     const entry = {
         id: history.length ? Math.max(...history.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
-        employeeId: Number(employeeId),
+        companyId,
+        employeeId,
         action,
         details,
         createdAt: new Date().toISOString(),
@@ -91,7 +95,7 @@ export function addStaffHistory(companyId, employeeId, action, details = {}) {
 
 export function loadStaffHistory(companyId, employeeId = null) {
     return storage.get(STORAGE_KEYS.staffHistory, []).filter((entry) => (
-        Number(entry.companyId) === Number(companyId)
-        && (!employeeId || Number(entry.employeeId) === Number(employeeId))
+        idsEqual(entry.companyId, companyId)
+        && (!employeeId || idsEqual(entry.employeeId, employeeId))
     ));
 }

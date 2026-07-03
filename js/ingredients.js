@@ -1,4 +1,5 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { logStockMovement } from "./stockMovements.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
@@ -21,7 +22,7 @@ export const INGREDIENT_CATEGORIES = [
 
 export function loadIngredients(companyId = null) {
     const ingredients = storage.get(STORAGE_KEYS.ingredients, []);
-    return companyId ? ingredients.filter((item) => Number(item.companyId) === Number(companyId)) : ingredients;
+    return companyId ? ingredients.filter((item) => idsEqual(item.companyId, companyId)) : ingredients;
 }
 
 export function saveIngredients(ingredients) {
@@ -37,7 +38,7 @@ export function createIngredient(companyId, data) {
     const now = new Date().toISOString();
     const ingredient = {
         id: ingredients.length ? Math.max(...ingredients.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
+        companyId,
         name: data.name.trim(),
         sku: data.sku || generateIngredientSku(companyId),
         barcode: data.barcode || "",
@@ -55,6 +56,7 @@ export function createIngredient(companyId, data) {
     };
 
     saveIngredients([...ingredients, ingredient]);
+    mirrorCreate("ingredients", companyId, ingredient);
     logStockMovement(companyId, ingredient.id, {
         type: "income",
         quantity: ingredient.quantity,
@@ -86,6 +88,7 @@ export function updateIngredient(ingredientId, data) {
     };
 
     saveIngredients(ingredients);
+    mirrorUpdate("ingredients", ingredients[index].companyId, ingredients[index]);
     return ingredients[index];
 }
 
@@ -98,6 +101,7 @@ export function deleteIngredient(ingredientId) {
     }
 
     saveIngredients(ingredients.filter((item) => Number(item.id) !== Number(ingredientId)));
+    mirrorDelete("ingredients", ingredient.companyId, ingredient);
     createLog("Удалил ингредиент", { companyId: ingredient.companyId, ingredient: ingredient.name });
     return true;
 }

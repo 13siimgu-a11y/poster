@@ -11,7 +11,7 @@ export const operationsRouter = Router({ mergeParams: true });
 
 operationsRouter.use("/halls", createCompanyCrudRouter("hall"));
 operationsRouter.use("/tables", createCompanyCrudRouter("restaurantTable"));
-operationsRouter.use("/table-orders", createCompanyCrudRouter("tableOrder"));
+operationsRouter.use("/table-orders", createTableOrdersRouter());
 operationsRouter.use("/reservations", createCompanyCrudRouter("reservation"));
 operationsRouter.use("/ingredients", createCompanyCrudRouter("ingredient", {
     createData(request) {
@@ -183,6 +183,132 @@ operationsRouter.post("/customers/:id/bonus/add", bonusOperation("add"));
 operationsRouter.post("/customers/:id/bonus/redeem", bonusOperation("redeem"));
 operationsRouter.post("/customers/:id/blacklist", customerBlacklist(true));
 operationsRouter.post("/customers/:id/restore", customerBlacklist(false));
+
+function createTableOrdersRouter() {
+    const router = Router({ mergeParams: true });
+
+    router.use(requireAuth, requireCompanyAccess);
+
+    router.get("/", asyncHandler(async (request, response) => {
+        const orders = await prisma.tableOrder.findMany({
+            where: { companyId: request.params.companyId },
+            include: { items: true, payments: true },
+            orderBy: { createdAt: "desc" },
+        });
+        response.json(orders);
+    }));
+
+    router.post("/", asyncHandler(async (request, response) => {
+        const order = await prisma.tableOrder.create({
+            data: buildTableOrderData(request),
+            include: { items: true, payments: true },
+        });
+        emitFloorEvent(request, "order:created", order);
+        response.status(201).json(order);
+    }));
+
+    router.get("/:id", asyncHandler(async (request, response) => {
+        const order = await prisma.tableOrder.findFirst({
+            where: { id: request.params.id, companyId: request.params.companyId },
+            include: { items: true, payments: true },
+        });
+        if (!order) {
+            throw new ApiError(404, "Table order not found");
+        }
+        response.json(order);
+    }));
+
+    router.patch("/:id", asyncHandler(async (request, response) => {
+        const existing = await assertCompanyRecord("tableOrder", request.params.companyId, request.params.id, "Table order not found");
+        const order = await prisma.$transaction(async (tx) => {
+            if (Array.isArray(request.body.items)) {
+                await tx.orderItem.deleteMany({ where: { orderId: existing.id } });
+            }
+            if (Array.isArray(request.body.payments)) {
+                await tx.payment.deleteMany({ where: { orderId: existing.id } });
+            }
+
+            return tx.tableOrder.update({
+                where: { id: existing.id },
+                data: buildTableOrderData(request, true),
+                include: { items: true, payments: true },
+            });
+        });
+        emitFloorEvent(request, "order:updated", order);
+        response.json(order);
+    }));
+
+    router.delete("/:id", asyncHandler(async (request, response) => {
+        const existing = await assertCompanyRecord("tableOrder", request.params.companyId, request.params.id, "Table order not found");
+        await prisma.tableOrder.delete({ where: { id: existing.id } });
+        emitFloorEvent(request, "order:deleted", { id: existing.id });
+        response.status(204).send();
+    }));
+
+    return router;
+}
+
+function buildTableOrderData(request, isUpdate = false) {
+    const body = request.body;
+    const data = {
+        number: body.number,
+        companyId: request.params.companyId,
+        hallId: body.hallId || null,
+        tableId: body.tableId || null,
+        waiterId: body.waiterId || null,
+        customerId: body.customerId || null,
+        guests: Number(body.guests || 1),
+        status: body.status || "opened",
+        discount: Number(body.discount || 0),
+        tax: Number(body.tax || 0),
+        subtotal: Number(body.subtotal || 0),
+        total: Number(body.total || 0),
+        comments: body.comments || "",
+        history: body.history || [],
+    };
+
+    if (isUpdate) {
+        delete data.companyId;
+        if (!data.number) {
+            delete data.number;
+        }
+    } else if (!data.number) {
+        data.number = `ORD-${Date.now()}`;
+    }
+
+    if (Array.isArray(body.items)) {
+        data.items = {
+            create: body.items.map((item) => ({
+                productId: item.productId || null,
+                name: item.name || "Позиция",
+                price: Number(item.price || 0),
+                quantity: Number(item.quantity || 1),
+                modifiers: item.modifiers || [],
+                comment: item.comment || "",
+                total: Number(item.total || 0),
+            })),
+        };
+    }
+
+    if (Array.isArray(body.payments)) {
+        data.payments = {
+            create: body.payments.map((payment) => ({
+                type: payment.type || "cash",
+                amount: Number(payment.amount || 0),
+                meta: payment.meta || {},
+            })),
+        };
+    }
+
+    return data;
+}
+
+function emitFloorEvent(request, event, payload) {
+    const io = request.app.get("io");
+    if (io) {
+        emitCompanyEvent(io, request.params.companyId, "floor", event, payload);
+    }
+}
 
 function updateTableOrderStatus(status, event) {
     return asyncHandler(async (request, response) => {

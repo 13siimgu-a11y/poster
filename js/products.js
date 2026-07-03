@@ -1,4 +1,5 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export const PRODUCT_UNITS = ["шт", "г", "кг", "мл", "л", "порция", "бутылка", "стакан"];
@@ -7,7 +8,7 @@ export const PRODUCT_TAGS = ["Новинка", "Острое", "Вегетари
 
 export function loadProducts(companyId = null) {
     const products = storage.get(STORAGE_KEYS.products, []);
-    return companyId ? products.filter((product) => Number(product.companyId) === Number(companyId)) : products;
+    return companyId ? products.filter((product) => idsEqual(product.companyId, companyId)) : products;
 }
 
 export function saveProducts(products) {
@@ -25,8 +26,8 @@ function normalizeProduct(companyId, data, existingProduct = {}) {
 
     return {
         id: existingProduct.id,
-        companyId: Number(companyId),
-        categoryId: Number(data.categoryId ?? existingProduct.categoryId ?? 0),
+        companyId,
+        categoryId: data.categoryId ?? existingProduct.categoryId ?? 0,
         name: data.name?.trim() || existingProduct.name || "",
         sku: data.sku || existingProduct.sku || generateSku(companyId),
         description: data.description?.trim() ?? existingProduct.description ?? "",
@@ -71,6 +72,7 @@ export function createProduct(companyId, data) {
     product.id = products.length ? Math.max(...products.map((item) => Number(item.id))) + 1 : 1;
 
     saveProducts([...products, product]);
+    mirrorCreate("products", companyId, product);
     createLog("Создал товар", { companyId, product: product.name, sku: product.sku });
     return product;
 }
@@ -85,6 +87,7 @@ export function updateProduct(productId, data) {
 
     products[productIndex] = normalizeProduct(products[productIndex].companyId, data, products[productIndex]);
     saveProducts(products);
+    mirrorUpdate("products", products[productIndex].companyId, products[productIndex]);
     createLog("Изменил товар", { companyId: products[productIndex].companyId, product: products[productIndex].name });
     return products[productIndex];
 }
@@ -98,6 +101,7 @@ export function deleteProduct(productId) {
     }
 
     saveProducts(products.filter((item) => Number(item.id) !== Number(productId)));
+    mirrorDelete("products", product.companyId, product);
     createLog("Удалил товар", { companyId: product.companyId, product: product.name });
     return true;
 }

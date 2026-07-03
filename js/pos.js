@@ -1,6 +1,7 @@
 import { formatMoney } from "./currency.js";
 import { createKitchenOrder } from "./kitchenOrders.js";
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorUpdate } from "./apiPersistence.js";
 import { loadProducts } from "./products.js";
 import { consumeIngredients } from "./recipes.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
@@ -10,7 +11,7 @@ export const RECEIPT_STATUSES = ["open", "held", "paid", "refund", "void"];
 
 export function loadCashRegisters(companyId) {
     const registers = storage.get(STORAGE_KEYS.cashRegisters, []);
-    const companyRegisters = registers.filter((register) => Number(register.companyId) === Number(companyId));
+    const companyRegisters = registers.filter((register) => idsEqual(register.companyId, companyId));
 
     if (companyRegisters.length) {
         return companyRegisters;
@@ -25,14 +26,14 @@ export function createDefaultRegisters(companyId) {
     const defaults = [
         {
             id: nextId,
-            companyId: Number(companyId),
+            companyId,
             name: "Касса 1",
             active: true,
             createdAt: new Date().toISOString(),
         },
         {
             id: nextId + 1,
-            companyId: Number(companyId),
+            companyId,
             name: "Касса 2",
             active: true,
             createdAt: new Date().toISOString(),
@@ -40,13 +41,14 @@ export function createDefaultRegisters(companyId) {
     ];
 
     storage.set(STORAGE_KEYS.cashRegisters, [...registers, ...defaults]);
+    defaults.forEach((register) => mirrorCreate("cashRegisters", companyId, register));
     return defaults;
 }
 
 export function loadReceipts(companyId, status = null) {
     const receipts = storage.get(STORAGE_KEYS.receipts, []);
     return receipts.filter((receipt) => (
-        Number(receipt.companyId) === Number(companyId)
+        idsEqual(receipt.companyId, companyId)
         && (!status || receipt.status === status)
     ));
 }
@@ -60,9 +62,9 @@ export function createReceipt(companyId, registerId, cashierId) {
     const receipt = {
         id: receipts.length ? Math.max(...receipts.map((item) => Number(item.id))) + 1 : 1,
         number: `CHK-${String(receipts.length + 1).padStart(5, "0")}`,
-        companyId: Number(companyId),
-        registerId: Number(registerId),
-        cashierId: Number(cashierId),
+        companyId,
+        registerId,
+        cashierId,
         status: "open",
         items: [],
         discount: 0,
@@ -79,6 +81,7 @@ export function createReceipt(companyId, registerId, cashierId) {
 
     receipt.qrCode = createReceiptQr(receipt);
     saveReceipts([...receipts, receipt]);
+    mirrorCreate("receipts", companyId, receipt);
     return receipt;
 }
 
@@ -98,6 +101,7 @@ export function updateReceipt(receiptId, patch) {
     updatedReceipt.qrCode = createReceiptQr(updatedReceipt);
     receipts[receiptIndex] = updatedReceipt;
     saveReceipts(receipts);
+    mirrorUpdate("receipts", updatedReceipt.companyId, updatedReceipt);
     return updatedReceipt;
 }
 

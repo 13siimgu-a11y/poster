@@ -1,12 +1,13 @@
 import { createLog } from "./logs.js";
 import { createKitchenOrder } from "./kitchenOrders.js";
+import { idsEqual, mirrorCreate, mirrorUpdate } from "./apiPersistence.js";
 import { updateTable } from "./tables.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export function loadOrders(companyId = null, status = null) {
     const orders = storage.get(STORAGE_KEYS.tableOrders, []);
     return orders.filter((order) => (
-        (!companyId || Number(order.companyId) === Number(companyId))
+        (!companyId || idsEqual(order.companyId, companyId))
         && (!status || order.status === status)
     ));
 }
@@ -21,9 +22,9 @@ export function createOrder(companyId, hallId, tableId, data = {}) {
     const order = calculateOrder({
         id: orders.length ? Math.max(...orders.map((item) => Number(item.id))) + 1 : 1,
         number: `ORD-${String(orders.length + 1).padStart(5, "0")}`,
-        companyId: Number(companyId),
-        hallId: Number(hallId),
-        tableId: Number(tableId),
+        companyId,
+        hallId,
+        tableId,
         cashierId: data.cashierId || null,
         waiterId: data.waiterId || null,
         guests: Number(data.guests || 1),
@@ -41,6 +42,7 @@ export function createOrder(companyId, hallId, tableId, data = {}) {
     });
 
     saveOrders([...orders, order]);
+    mirrorCreate("tableOrders", companyId, order);
     updateTable(tableId, { status: "occupied", activeOrderId: order.id });
     if (order.items.length) {
         createKitchenOrder(order);
@@ -68,6 +70,7 @@ export function updateOrder(orderId, data) {
     });
 
     saveOrders(orders);
+    mirrorUpdate("tableOrders", orders[orderIndex].companyId, orders[orderIndex]);
     return orders[orderIndex];
 }
 

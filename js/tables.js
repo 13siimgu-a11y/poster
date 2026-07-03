@@ -1,4 +1,5 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export const TABLE_STATUSES = {
@@ -13,8 +14,8 @@ export const TABLE_STATUSES = {
 export function loadTables(companyId = null, hallId = null) {
     const tables = storage.get(STORAGE_KEYS.tables, []);
     return tables.filter((table) => (
-        (!companyId || Number(table.companyId) === Number(companyId))
-        && (!hallId || Number(table.hallId) === Number(hallId))
+        (!companyId || idsEqual(table.companyId, companyId))
+        && (!hallId || idsEqual(table.hallId, hallId))
     ));
 }
 
@@ -27,8 +28,8 @@ export function createTable(companyId, hallId, data = {}) {
     const now = new Date().toISOString();
     const table = {
         id: tables.length ? Math.max(...tables.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
-        hallId: Number(hallId),
+        companyId,
+        hallId,
         name: data.name || `Стол №${loadTables(companyId, hallId).length + 1}`,
         seats: Number(data.seats || 4),
         deposit: Number(data.deposit || 0),
@@ -48,6 +49,7 @@ export function createTable(companyId, hallId, data = {}) {
     };
 
     saveTables([...tables, table]);
+    mirrorCreate("tables", companyId, table);
     createLog("Создал стол", { companyId, hallId, table: table.name });
     return table;
 }
@@ -67,6 +69,7 @@ export function updateTable(tableId, data) {
     };
 
     saveTables(tables);
+    mirrorUpdate("tables", tables[tableIndex].companyId, tables[tableIndex]);
     return tables[tableIndex];
 }
 
@@ -79,6 +82,7 @@ export function deleteTable(tableId) {
     }
 
     saveTables(tables.filter((item) => Number(item.id) !== Number(tableId)));
+    mirrorDelete("tables", table.companyId, table);
     createLog("Удалил стол", { companyId: table.companyId, table: table.name });
     return true;
 }

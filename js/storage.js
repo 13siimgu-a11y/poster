@@ -27,6 +27,7 @@ export const STORAGE_KEYS = {
     staffShifts: "posPosterStaffShifts",
     staffSchedules: "posPosterStaffSchedules",
     staffHistory: "posPosterStaffHistory",
+    customers: "posPosterCustomers",
     aiConversations: "posPosterAIConversations",
 };
 

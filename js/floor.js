@@ -1,9 +1,10 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export function loadFloor(companyId = null) {
     const halls = storage.get(STORAGE_KEYS.halls, []);
-    return companyId ? halls.filter((hall) => Number(hall.companyId) === Number(companyId)) : halls;
+    return companyId ? halls.filter((hall) => idsEqual(hall.companyId, companyId)) : halls;
 }
 
 export function saveFloor(halls) {
@@ -29,7 +30,7 @@ export function createHall(companyId, data) {
     const now = new Date().toISOString();
     const hall = {
         id: halls.length ? Math.max(...halls.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
+        companyId,
         name: data.name.trim(),
         description: data.description?.trim() || "",
         image: data.image || "",
@@ -42,6 +43,7 @@ export function createHall(companyId, data) {
     };
 
     saveFloor([...halls, hall]);
+    mirrorCreate("halls", companyId, hall);
     createLog("Создал зал", { companyId, hall: hall.name });
     return hall;
 }
@@ -63,6 +65,7 @@ export function updateHall(hallId, data) {
     };
 
     saveFloor(halls);
+    mirrorUpdate("halls", halls[hallIndex].companyId, halls[hallIndex]);
     createLog("Изменил зал", { companyId: halls[hallIndex].companyId, hall: halls[hallIndex].name });
     return halls[hallIndex];
 }
@@ -76,6 +79,7 @@ export function deleteHall(hallId) {
     }
 
     saveFloor(halls.filter((item) => Number(item.id) !== Number(hallId)));
+    mirrorDelete("halls", hall.companyId, hall);
     createLog("Удалил зал", { companyId: hall.companyId, hall: hall.name });
     return true;
 }

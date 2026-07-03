@@ -62,10 +62,19 @@ posRouter.post("/receipts", asyncHandler(async (request, response) => {
 
 posRouter.patch("/receipts/:id", asyncHandler(async (request, response) => {
     const receipt = await assertReceipt(request.params.companyId, request.params.id);
-    const updated = await prisma.receipt.update({
-        where: { id: receipt.id },
-        data: request.body,
-        include: { items: true, payments: true },
+    const updated = await prisma.$transaction(async (tx) => {
+        if (Array.isArray(request.body.items)) {
+            await tx.receiptItem.deleteMany({ where: { receiptId: receipt.id } });
+        }
+        if (Array.isArray(request.body.payments)) {
+            await tx.payment.deleteMany({ where: { receiptId: receipt.id } });
+        }
+
+        return tx.receipt.update({
+            where: { id: receipt.id },
+            data: buildReceiptData(request.body, true),
+            include: { items: true, payments: true },
+        });
     });
     response.json(updated);
 }));
@@ -155,4 +164,49 @@ async function assertReceipt(companyId, id) {
     }
 
     return receipt;
+}
+
+function buildReceiptData(body, isUpdate = false) {
+    const data = {
+        number: body.number,
+        registerId: body.registerId || null,
+        customerId: body.customerId || null,
+        status: body.status || "open",
+        discount: Number(body.discount || 0),
+        surcharge: Number(body.surcharge || 0),
+        subtotal: Number(body.subtotal || 0),
+        total: Number(body.total || 0),
+        comment: body.comment || "",
+        paidAt: body.paidAt || null,
+    };
+
+    if (isUpdate && !data.number) {
+        delete data.number;
+    }
+
+    if (Array.isArray(body.items)) {
+        data.items = {
+            create: body.items.map((item) => ({
+                productId: item.productId || null,
+                name: item.name || "Позиция",
+                price: Number(item.price || 0),
+                quantity: Number(item.quantity || 1),
+                modifiers: item.modifiers || [],
+                comment: item.comment || "",
+                total: Number(item.total || 0),
+            })),
+        };
+    }
+
+    if (Array.isArray(body.payments)) {
+        data.payments = {
+            create: body.payments.map((payment) => ({
+                type: payment.type || "cash",
+                amount: Number(payment.amount || 0),
+                meta: payment.meta || {},
+            })),
+        };
+    }
+
+    return data;
 }

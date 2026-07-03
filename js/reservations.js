@@ -1,18 +1,19 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorUpdate } from "./apiPersistence.js";
 import { updateTable } from "./tables.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export function loadReservations(companyId = null) {
     const reservations = storage.get(STORAGE_KEYS.reservations, []);
-    return companyId ? reservations.filter((item) => Number(item.companyId) === Number(companyId)) : reservations;
+    return companyId ? reservations.filter((item) => idsEqual(item.companyId, companyId)) : reservations;
 }
 
 export function createReservation(companyId, tableId, data) {
     const reservations = storage.get(STORAGE_KEYS.reservations, []);
     const reservation = {
         id: reservations.length ? Math.max(...reservations.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
-        tableId: Number(tableId),
+        companyId,
+        tableId,
         clientName: data.clientName,
         phone: data.phone,
         date: data.date,
@@ -26,6 +27,7 @@ export function createReservation(companyId, tableId, data) {
     };
 
     storage.set(STORAGE_KEYS.reservations, [...reservations, reservation]);
+    mirrorCreate("reservations", companyId, reservation);
     updateTable(tableId, { status: "reserved", reservationId: reservation.id });
     createLog("Создал бронь", { companyId, tableId, client: reservation.clientName });
     return reservation;
@@ -46,6 +48,7 @@ export function updateReservation(reservationId, data) {
     };
 
     storage.set(STORAGE_KEYS.reservations, reservations);
+    mirrorUpdate("reservations", reservations[index].companyId, reservations[index]);
     return reservations[index];
 }
 

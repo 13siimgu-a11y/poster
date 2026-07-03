@@ -1,16 +1,17 @@
+import { idsEqual } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export function loadStockMovements(companyId = null) {
     const movements = storage.get(STORAGE_KEYS.stockMovements, []);
-    return companyId ? movements.filter((movement) => Number(movement.companyId) === Number(companyId)) : movements;
+    return companyId ? movements.filter((movement) => idsEqual(movement.companyId, companyId)) : movements;
 }
 
 export function logStockMovement(companyId, ingredientId, data) {
     const movements = storage.get(STORAGE_KEYS.stockMovements, []);
     const movement = {
         id: movements.length ? Math.max(...movements.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
-        ingredientId: Number(ingredientId),
+        companyId,
+        ingredientId,
         type: data.type,
         quantity: Number(data.quantity),
         reason: data.reason || "",

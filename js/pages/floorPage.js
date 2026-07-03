@@ -1,4 +1,5 @@
 import { makeDraggable } from "../dragdrop.js";
+import { idsEqual } from "../apiPersistence.js";
 import { createHall, ensureDefaultHall, loadFloor } from "../floor.js";
 import { moveHallObject, rotateHallObject } from "../hallEditor.js";
 import { cancelOrder, closeOrder, createOrder, loadOrders, transferOrder } from "../orders.js";
@@ -75,7 +76,7 @@ function renderHalls() {
 
     document.querySelectorAll("[data-hall-id]").forEach((button) => {
         button.addEventListener("click", () => {
-            activeHall = halls.find((hall) => Number(hall.id) === Number(button.dataset.hallId));
+            activeHall = halls.find((hall) => idsEqual(hall.id, button.dataset.hallId));
             renderFloor();
         });
     });
@@ -146,7 +147,7 @@ function createTableForHall(type) {
 }
 
 function openTableModal(tableId) {
-    const table = loadTables(currentCompany.id).find((item) => Number(item.id) === Number(tableId));
+    const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, tableId));
     const order = loadOrders(currentCompany.id, "opened").find((item) => Number(item.id) === Number(table.activeOrderId));
     document.getElementById("floorModalTitle").textContent = table.name;
     document.getElementById("floorModalBody").innerHTML = `

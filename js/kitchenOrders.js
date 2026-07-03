@@ -1,12 +1,13 @@
 import { createLog } from "./logs.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
+import { idsEqual } from "./apiPersistence.js";
 import { dispatchKitchenUpdate, playNotification } from "./kitchenNotifications.js";
 import { KITCHEN_PRIORITIES } from "./kitchenStatus.js";
 
 export function loadKitchenOrders(companyId = null, includeArchive = false) {
     const activeOrders = storage.get(STORAGE_KEYS.kitchenOrders, []);
     const archive = includeArchive ? storage.get(STORAGE_KEYS.kitchenArchive, []) : [];
-    return [...activeOrders, ...archive].filter((order) => !companyId || Number(order.companyId) === Number(companyId));
+    return [...activeOrders, ...archive].filter((order) => !companyId || idsEqual(order.companyId, companyId));
 }
 
 export function saveKitchenOrders(orders) {
@@ -23,10 +24,10 @@ export function createKitchenOrder(order, options = {}) {
     const orders = storage.get(STORAGE_KEYS.kitchenOrders, []);
     const kitchenOrder = {
         id: orders.length ? Math.max(...orders.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(order.companyId),
-        orderId: Number(order.id),
-        tableId: Number(order.tableId || 0),
-        waiterId: Number(order.waiterId || order.cashierId || 0),
+        companyId: order.companyId,
+        orderId: order.id,
+        tableId: order.tableId || 0,
+        waiterId: order.waiterId || order.cashierId || 0,
         guests: Number(order.guests || 1),
         priority: options.priority || "normal",
         type: options.type || "dine-in",

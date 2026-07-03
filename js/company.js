@@ -1,5 +1,6 @@
 import { createLog } from "./logs.js";
 import { api } from "./apiClient.js";
+import { idsEqual } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 import { checkUser, persistCurrentUser } from "./auth.js";
 import { updateUser } from "./users.js";
@@ -29,12 +30,12 @@ export function saveCompanies(companies) {
 }
 
 export function loadCompany(companyId) {
-    return loadCompanies().find((company) => Number(company.id) === Number(companyId)) || null;
+    return loadCompanies().find((company) => idsEqual(company.id, companyId)) || null;
 }
 
 export function saveCompany(company) {
     const companies = loadCompanies();
-    const companyIndex = companies.findIndex((item) => Number(item.id) === Number(company.id));
+    const companyIndex = companies.findIndex((item) => idsEqual(item.id, company.id));
 
     if (companyIndex === -1) {
         companies.push(company);
@@ -229,7 +230,7 @@ export function deleteCompany(companyId) {
         return false;
     }
 
-    saveCompanies(loadCompanies().filter((item) => Number(item.id) !== Number(companyId)));
+    saveCompanies(loadCompanies().filter((item) => !idsEqual(item.id, companyId)));
     createLog("Удалил заведение", { companyId: company.id, name: company.name });
     return true;
 }

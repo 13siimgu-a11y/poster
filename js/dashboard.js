@@ -7,6 +7,7 @@ import {
     getVisibleViews,
     VIEW_GROUPS,
 } from "./accessPolicy.js";
+import { syncCoreData } from "./apiPersistence.js";
 import { initAIChat } from "./aiChat.js";
 import {
     createCategory,
@@ -100,6 +101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
+    await syncCoreData(currentCompany.id);
     loadDashboard();
 });
 

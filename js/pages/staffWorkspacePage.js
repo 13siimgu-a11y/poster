@@ -4,6 +4,7 @@ import { formatMoney } from "../currency.js";
 import { loadFloor, ensureDefaultHall } from "../floor.js";
 import { addStock, loadIngredients, performInventory, writeOffStock } from "../inventory.js";
 import { createKitchenOrder, loadKitchenOrders } from "../kitchenOrders.js";
+import { idsEqual } from "../apiPersistence.js";
 import { createOrder, loadOrders, updateOrder, closeOrder, cancelOrder, transferOrder } from "../orders.js";
 import { loadProducts } from "../products.js";
 import {
@@ -235,12 +236,12 @@ function renderTableMap(halls) {
 
     const orders = loadOrders(currentCompany.id, "opened");
     const reservations = storage.get(STORAGE_KEYS.reservations, []).filter((reservation) => (
-        Number(reservation.companyId) === Number(currentCompany.id)
+        idsEqual(reservation.companyId, currentCompany.id)
     ));
 
     return tables.map((table) => {
         const order = orders.find((item) => Number(item.id) === Number(table.activeOrderId));
-        const reservation = reservations.find((item) => Number(item.tableId) === Number(table.id) && item.status !== "cancelled");
+        const reservation = reservations.find((item) => idsEqual(item.tableId, table.id) && item.status !== "cancelled");
         const state = getTableState(table, order, reservation);
         return `
             <button class="workspace-table workspace-table--${state.tone} ${Number(order?.id) === Number(activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}">
@@ -327,7 +328,7 @@ function renderActiveOrder() {
         `;
     }
 
-    const table = loadTables(currentCompany.id).find((item) => Number(item.id) === Number(order.tableId));
+    const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, order.tableId));
     return `
         <div class="workspace-order-head">
             <div>
@@ -431,7 +432,7 @@ function bindOrderPanelActions() {
 }
 
 function openTableOrder(tableId) {
-    const table = loadTables(currentCompany.id).find((item) => Number(item.id) === Number(tableId));
+    const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, tableId));
     let order = loadOrders(currentCompany.id, "opened").find((item) => Number(item.id) === Number(table?.activeOrderId));
 
     if (!table) {
@@ -768,7 +769,7 @@ function openDiscountModal(order) {
 }
 
 function openTransferModal(order) {
-    const tables = loadTables(currentCompany.id).filter((table) => Number(table.id) !== Number(order.tableId));
+    const tables = loadTables(currentCompany.id).filter((table) => !idsEqual(table.id, order.tableId));
     openWorkspaceModal("Перенести заказ", `
         <form class="workspace-form" id="transferForm">
             <label>Новый стол
@@ -1449,7 +1450,7 @@ function getInitialActiveOrderId() {
 
 function getOpenShift() {
     return storage.get(STORAGE_KEYS.staffShifts, []).find((shift) => (
-        Number(shift.companyId) === Number(currentCompany.id)
+        idsEqual(shift.companyId, currentCompany.id)
         && Number(shift.userId || shift.employeeId) === Number(currentUser.id)
         && shift.status === "opened"
     ));

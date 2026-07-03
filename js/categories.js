@@ -1,4 +1,5 @@
 import { createLog } from "./logs.js";
+import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export const DEFAULT_CATEGORY_NAMES = [
@@ -23,7 +24,7 @@ const CATEGORY_COLORS = ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444", 
 
 export function loadCategories(companyId = null) {
     const categories = storage.get(STORAGE_KEYS.categories, []);
-    return companyId ? categories.filter((category) => Number(category.companyId) === Number(companyId)) : categories;
+    return companyId ? categories.filter((category) => idsEqual(category.companyId, companyId)) : categories;
 }
 
 export function saveCategories(categories) {
@@ -42,7 +43,7 @@ export function ensureDefaultCategories(companyId) {
     const nextId = allCategories.length ? Math.max(...allCategories.map((item) => Number(item.id))) + 1 : 1;
     const defaults = DEFAULT_CATEGORY_NAMES.map((name, index) => ({
         id: nextId + index,
-        companyId: Number(companyId),
+        companyId,
         name,
         description: "",
         color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
@@ -55,6 +56,7 @@ export function ensureDefaultCategories(companyId) {
     }));
 
     saveCategories([...allCategories, ...defaults]);
+    defaults.forEach((category) => mirrorCreate("categories", companyId, category));
     return defaults;
 }
 
@@ -63,7 +65,7 @@ export function createCategory(companyId, data) {
     const companyCategories = loadCategories(companyId);
     const category = {
         id: categories.length ? Math.max(...categories.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
+        companyId,
         name: data.name.trim(),
         description: data.description?.trim() || "",
         color: data.color || "#3B82F6",
@@ -76,6 +78,7 @@ export function createCategory(companyId, data) {
     };
 
     saveCategories([...categories, category]);
+    mirrorCreate("categories", companyId, category);
     createLog("Создал категорию", { companyId, category: category.name });
     return category;
 }
@@ -97,6 +100,7 @@ export function updateCategory(categoryId, data) {
     };
 
     saveCategories(categories);
+    mirrorUpdate("categories", categories[categoryIndex].companyId, categories[categoryIndex]);
     createLog("Изменил категорию", { companyId: categories[categoryIndex].companyId, category: categories[categoryIndex].name });
     return categories[categoryIndex];
 }
@@ -110,6 +114,7 @@ export function deleteCategory(categoryId) {
     }
 
     saveCategories(categories.filter((item) => Number(item.id) !== Number(categoryId)));
+    mirrorDelete("categories", category.companyId, category);
     createLog("Удалил категорию", { companyId: category.companyId, category: category.name });
     return true;
 }
@@ -117,7 +122,7 @@ export function deleteCategory(categoryId) {
 export function sortCategories(companyId, orderedIds) {
     const categories = storage.get(STORAGE_KEYS.categories, []);
     const updatedCategories = categories.map((category) => {
-        if (Number(category.companyId) !== Number(companyId)) {
+        if (!idsEqual(category.companyId, companyId)) {
             return category;
         }
 
@@ -130,6 +135,9 @@ export function sortCategories(companyId, orderedIds) {
     });
 
     saveCategories(updatedCategories);
+    updatedCategories.filter((category) => idsEqual(category.companyId, companyId)).forEach((category) => {
+        mirrorUpdate("categories", companyId, category);
+    });
     createLog("Изменил порядок категорий", { companyId });
     return loadCategories(companyId);
 }

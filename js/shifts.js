@@ -1,18 +1,19 @@
 import { addStaffHistory } from "./employees.js";
+import { idsEqual, mirrorCreate, mirrorUpdate } from "./apiPersistence.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export function loadShifts(companyId = null) {
     const shifts = storage.get(STORAGE_KEYS.staffShifts, []);
-    return companyId ? shifts.filter((shift) => Number(shift.companyId) === Number(companyId)) : shifts;
+    return companyId ? shifts.filter((shift) => idsEqual(shift.companyId, companyId)) : shifts;
 }
 
 export function createShift(companyId, data) {
     const shifts = storage.get(STORAGE_KEYS.staffShifts, []);
     const shift = {
         id: shifts.length ? Math.max(...shifts.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
-        employeeId: Number(data.employeeId),
-        positionId: Number(data.positionId || 0),
+        companyId,
+        employeeId: data.employeeId,
+        positionId: data.positionId || 0,
         date: data.date || new Date().toISOString().slice(0, 10),
         plannedStart: data.plannedStart || "",
         plannedEnd: data.plannedEnd || "",
@@ -27,6 +28,7 @@ export function createShift(companyId, data) {
         updatedAt: new Date().toISOString(),
     };
     storage.set(STORAGE_KEYS.staffShifts, [shift, ...shifts]);
+    mirrorCreate("shifts", companyId, shift);
     return shift;
 }
 
@@ -58,6 +60,7 @@ export function closeShift(shiftId, data = {}) {
         updatedAt: new Date().toISOString(),
     };
     storage.set(STORAGE_KEYS.staffShifts, shifts);
+    mirrorUpdate("shifts", shifts[index].companyId, shifts[index]);
     addStaffHistory(shifts[index].companyId, shifts[index].employeeId, "Закрыта смена", { shiftId });
     return shifts[index];
 }
