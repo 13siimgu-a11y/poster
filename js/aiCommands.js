@@ -65,6 +65,7 @@ export function analyzeFinance() {
 export function detectCommand(message, context) {
     const text = message.toLowerCase();
     const categoryListRequest = parseCategoryListRequest(message);
+    const categoryProductsRequest = parseCategoryProductsRequest(message);
     const productRequest = parseProductCreateRequest(text);
     const categoryRequest = parseCategoryCreateRequest(text);
     const ingredientRequest = parseIngredientCreateRequest(text);
@@ -87,6 +88,21 @@ export function detectCommand(message, context) {
                 payload: {
                     categories: categoryListRequest.categories,
                     products: [],
+                },
+            },
+        };
+    }
+
+    if (categoryProductsRequest) {
+        return {
+            reply: `Я подготовил ${categoryProductsRequest.products.length} товаров для категории «${categoryProductsRequest.categoryName}»: ${categoryProductsRequest.products.map((item) => `${item.name} ${item.price}`).join(", ")}. Напишите «подтверждаю», чтобы добавить их в меню и базу.`,
+            action: {
+                type: "menu:template:create",
+                pending: true,
+                description: `Добавить товары в категорию «${categoryProductsRequest.categoryName}».`,
+                payload: {
+                    categories: [categoryProductsRequest.categoryName],
+                    products: categoryProductsRequest.products,
                 },
             },
         };
@@ -275,6 +291,50 @@ function parseCategoryListRequest(message) {
         .filter(Boolean);
 
     return categories.length > 1 ? { categories } : null;
+}
+
+function parseCategoryProductsRequest(message) {
+    const match = message.match(/(?:добавь|создай|закинь|добавить).{0,40}?в\s+категори[юя]\s+([^,]+?)\s+(.+)$/i);
+    if (!match) return null;
+
+    const categoryName = match[1]
+        .replace(/товары|позиции|напитки|меню/gi, "")
+        .trim();
+    const productsText = match[2]
+        .replace(/^товары\s*/i, "")
+        .replace(/^позиции\s*/i, "")
+        .trim();
+    const products = productsText
+        .split(",")
+        .map(parsePricedProduct)
+        .filter(Boolean)
+        .map((product) => ({
+            ...product,
+            categoryName,
+            description: `Добавлено AI: ${product.name}`,
+            costPrice: 0,
+            quantity: 999,
+            unit: "шт",
+            active: true,
+            posVisible: true,
+            qrVisible: true,
+        }));
+
+    return categoryName && products.length ? { categoryName, products } : null;
+}
+
+function parsePricedProduct(value) {
+    const normalized = value
+        .replace(/\b(?:gel|лари|₾|стоит|цена)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    const match = normalized.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)$/);
+    if (!match) return null;
+
+    return {
+        name: capitalize(match[1].trim()),
+        price: Number(match[2].replace(",", ".")),
+    };
 }
 
 function parseIngredientCreateRequest(text) {
