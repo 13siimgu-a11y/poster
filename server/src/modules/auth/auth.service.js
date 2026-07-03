@@ -108,21 +108,34 @@ export async function resetPasswordByEmail(data) {
 
 async function ensureDefaultSuperAdmin() {
     const passwordHash = await bcrypt.hash(DEFAULT_SUPER_ADMIN_PASSWORD, SALT_ROUNDS);
-    const existing = await prisma.user.findFirst({
+
+    const existingByUsername = await prisma.user.findFirst({
         where: {
-            OR: [
-                { username: { equals: DEFAULT_SUPER_ADMIN_USERNAME, mode: "insensitive" } },
-                { email: DEFAULT_SUPER_ADMIN_EMAIL },
-            ],
+            username: { equals: DEFAULT_SUPER_ADMIN_USERNAME, mode: "insensitive" },
         },
     });
 
-    if (existing) {
+    if (existingByUsername) {
         return prisma.user.update({
-            where: { id: existing.id },
+            where: { id: existingByUsername.id },
             data: {
                 username: DEFAULT_SUPER_ADMIN_USERNAME,
-                email: DEFAULT_SUPER_ADMIN_EMAIL,
+                passwordHash,
+                role: "super_admin",
+                status: "active",
+            },
+        });
+    }
+
+    const existingByEmail = await prisma.user.findUnique({
+        where: { email: DEFAULT_SUPER_ADMIN_EMAIL },
+    });
+
+    if (existingByEmail) {
+        return prisma.user.update({
+            where: { id: existingByEmail.id },
+            data: {
+                username: DEFAULT_SUPER_ADMIN_USERNAME,
                 passwordHash,
                 role: "super_admin",
                 status: "active",

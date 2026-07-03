@@ -122,13 +122,16 @@ export async function login(formData) {
         storage.set(STORAGE_KEYS.currentUser, user);
         notify(`Добро пожаловать, ${user.username}`, "success");
         return user;
-    } catch {
+    } catch (error) {
         const employeeSession = loginEmployee(username, password);
         if (employeeSession) {
             return employeeSession;
         }
 
-        notify("Неверный Username или Password", "error");
+        const message = error.message?.toLowerCase().includes("invalid")
+            ? "Неверный Username или Password"
+            : error.message || "Не удалось войти";
+        notify(message, "error");
         return null;
     }
 }
