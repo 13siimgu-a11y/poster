@@ -1,13 +1,14 @@
-import { createCategory, loadCategories } from "./categories.js";
+import { createCategory, loadCategories, updateCategory } from "./categories.js";
 import { api } from "./apiClient.js";
 import { getApiIdForLocal, syncCoreData } from "./apiPersistence.js";
 import { addProductToReceipt, createReceipt, loadCashRegisters, loadReceipts } from "./pos.js";
 import { createProduct, loadProducts, updateProduct } from "./products.js";
-import { createEmployee } from "./employees.js";
-import { checkLowStock, createIngredient } from "./inventory.js";
+import { createEmployee, loadEmployees } from "./employees.js";
+import { checkLowStock, createIngredient, loadIngredients, updateIngredient } from "./inventory.js";
 import { createHall, loadFloor } from "./floor.js";
 import { createTable, loadTables, updateTable } from "./tables.js";
 import { createOrder } from "./orders.js";
+import { updateEmployee } from "./employees.js";
 import { STORAGE_KEYS } from "./storage.js";
 
 const CRITICAL_ACTIONS = ["delete", "price:update", "tax:update", "role:update", "company:delete", "shift:close"];
@@ -23,12 +24,20 @@ export async function executeAction(action, context) {
         return createCategoryWithApi(context, action.payload);
     }
 
+    if (action.type === "category:update") {
+        return updateCategoryWithApi(context, action.payload);
+    }
+
     if (action.type === "product:create") {
         return createProductWithApi(context, action.payload);
     }
 
     if (action.type === "product:update") {
         return updateProductWithApi(context, action.payload.productId, action.payload.patch);
+    }
+
+    if (action.type === "bulk:execute") {
+        return executeBulkAction(context, action.payload);
     }
 
     if (action.type === "receipt:add-product") {
@@ -59,12 +68,24 @@ export async function executeAction(action, context) {
         return createEmployeeWithApi(context, action.payload);
     }
 
+    if (action.type === "employee:update") {
+        return updateEmployeeWithApi(context, action.payload);
+    }
+
     if (action.type === "ingredient:create") {
         return createIngredientWithApi(context, action.payload);
     }
 
+    if (action.type === "ingredient:update") {
+        return updateIngredientWithApi(context, action.payload);
+    }
+
     if (action.type === "table:create") {
         return createTableWithApi(context, action.payload);
+    }
+
+    if (action.type === "table:update") {
+        return updateTableWithApi(context, action.payload);
     }
 
     if (action.type === "order:create") {
@@ -118,6 +139,28 @@ async function createProductWithApi(context, payload) {
             ...productPayload,
             categoryId: category.localId || category.id,
         });
+    }
+}
+
+async function updateCategoryWithApi(context, payload = {}) {
+    const category = findByName(loadCategories(context.companyId), payload.name || payload.categoryName);
+    if (!category) return { error: `Категория «${payload.name || payload.categoryName}» не найдена.` };
+
+    const patch = {
+        name: payload.nextName || payload.newName || payload.patch?.name || category.name,
+        description: payload.description ?? payload.patch?.description ?? category.description,
+        color: payload.color ?? payload.patch?.color ?? category.color,
+        icon: payload.icon ?? payload.patch?.icon ?? category.icon,
+        active: payload.active ?? payload.patch?.active ?? category.active,
+    };
+
+    try {
+        const apiCategoryId = getApiIdForLocal(STORAGE_KEYS.categories, category.id);
+        const updated = await api.patch(`/companies/${context.companyId}/categories/${apiCategoryId}`, patch);
+        await syncCoreData(context.companyId);
+        return updated;
+    } catch {
+        return updateCategory(category.id, patch);
     }
 }
 
@@ -179,6 +222,30 @@ async function createEmployeeWithApi(context, payload) {
     }
 }
 
+async function updateEmployeeWithApi(context, payload = {}) {
+    const employees = loadEmployees(context.companyId);
+    const employee = findByName(employees, payload.name || payload.firstName, (item) => `${item.firstName || ""} ${item.lastName || ""}`.trim());
+    if (!employee) return { error: `Сотрудник «${payload.name || payload.firstName}» не найден.` };
+
+    const patch = {
+        firstName: payload.firstName ?? payload.patch?.firstName ?? employee.firstName,
+        lastName: payload.lastName ?? payload.patch?.lastName ?? employee.lastName,
+        phone: payload.phone ?? payload.patch?.phone ?? employee.phone,
+        email: payload.email ?? payload.patch?.email ?? employee.email,
+        role: payload.role ?? payload.patch?.role ?? employee.role,
+        status: payload.status ?? payload.patch?.status ?? employee.status,
+    };
+
+    try {
+        const apiEmployeeId = getApiIdForLocal(STORAGE_KEYS.employees, employee.id);
+        const updated = await api.patch(`/companies/${context.companyId}/employees/${apiEmployeeId}`, patch);
+        await syncCoreData(context.companyId);
+        return updated;
+    } catch {
+        return updateEmployee(employee.id, patch);
+    }
+}
+
 async function createIngredientWithApi(context, payload) {
     const ingredientPayload = {
         name: payload.name?.trim() || "Новый ингредиент",
@@ -197,6 +264,30 @@ async function createIngredientWithApi(context, payload) {
         return ingredient;
     } catch {
         return createIngredient(context.companyId, ingredientPayload);
+    }
+}
+
+async function updateIngredientWithApi(context, payload = {}) {
+    const ingredient = findByName(loadIngredients(context.companyId), payload.name || payload.ingredientName);
+    if (!ingredient) return { error: `Ингредиент «${payload.name || payload.ingredientName}» не найден.` };
+
+    const patch = {
+        name: payload.nextName || payload.newName || payload.patch?.name || ingredient.name,
+        category: payload.category ?? payload.patch?.category ?? ingredient.category,
+        unit: payload.unit ?? payload.patch?.unit ?? ingredient.unit,
+        quantity: payload.quantity ?? payload.patch?.quantity ?? ingredient.quantity,
+        minQuantity: payload.minQuantity ?? payload.patch?.minQuantity ?? ingredient.minQuantity,
+        maxQuantity: payload.maxQuantity ?? payload.patch?.maxQuantity ?? ingredient.maxQuantity,
+        costPrice: payload.costPrice ?? payload.patch?.costPrice ?? ingredient.costPrice,
+    };
+
+    try {
+        const apiIngredientId = getApiIdForLocal(STORAGE_KEYS.ingredients, ingredient.id);
+        const updated = await api.patch(`/companies/${context.companyId}/ingredients/${apiIngredientId}`, patch);
+        await syncCoreData(context.companyId);
+        return updated;
+    } catch {
+        return updateIngredient(ingredient.id, patch);
     }
 }
 
@@ -222,6 +313,27 @@ async function createTableWithApi(context, payload = {}) {
         return table;
     } catch {
         return createTable(context.companyId, hall.localId || hall.id, tablePayload);
+    }
+}
+
+async function updateTableWithApi(context, payload = {}) {
+    const table = findByName(loadTables(context.companyId), payload.name || payload.tableName);
+    if (!table) return { error: `Стол «${payload.name || payload.tableName}» не найден.` };
+
+    const patch = {
+        name: payload.nextName || payload.newName || payload.patch?.name || table.name,
+        seats: payload.seats ?? payload.patch?.seats ?? table.seats,
+        status: payload.status ?? payload.patch?.status ?? table.status,
+        comment: payload.comment ?? payload.patch?.comment ?? table.comment,
+    };
+
+    try {
+        const apiTableId = getApiIdForLocal(STORAGE_KEYS.tables, table.id);
+        const updated = await api.patch(`/companies/${context.companyId}/tables/${apiTableId}`, patch);
+        await syncCoreData(context.companyId);
+        return updated;
+    } catch {
+        return updateTable(table.id, patch);
     }
 }
 
@@ -315,6 +427,37 @@ async function addProductToReceiptWithApi(context, payload) {
         }
         return addProductToReceipt(receipt, product, { comment: payload.comment || "" });
     }
+}
+
+async function executeBulkAction(context, payload = {}) {
+    const results = [];
+
+    for (const category of payload.categories || []) {
+        results.push(await createCategoryWithApi(context, typeof category === "string" ? { name: category } : category));
+    }
+
+    for (const product of payload.products || []) {
+        results.push(await createProductWithApi(context, product));
+    }
+
+    for (const ingredient of payload.ingredients || []) {
+        results.push(await createIngredientWithApi(context, ingredient));
+    }
+
+    for (const table of payload.tables || []) {
+        results.push(await createTableWithApi(context, table));
+    }
+
+    for (const employee of payload.employees || []) {
+        results.push(await createEmployeeWithApi(context, employee));
+    }
+
+    for (const update of payload.updates || []) {
+        results.push(await executeAction(update, context));
+    }
+
+    await syncCoreData(context.companyId);
+    return results;
 }
 
 async function ensureCategoryWithApi(context, categoryName, patch = {}) {
@@ -516,6 +659,14 @@ function normalizeProductPatch(patch = {}) {
         nextPatch.price = Number(nextPatch.price);
     }
     return nextPatch;
+}
+
+function findByName(items, name, getName = (item) => item.name) {
+    const normalizedName = String(name || "").trim().toLowerCase();
+    if (!normalizedName) return null;
+
+    return items.find((item) => getName(item).toLowerCase() === normalizedName)
+        || items.find((item) => getName(item).toLowerCase().includes(normalizedName));
 }
 
 export function cancelAction(action) {

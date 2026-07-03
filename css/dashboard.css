@@ -1636,6 +1636,19 @@ textarea {
     margin-top: 12px;
 }
 
+.ai-chat-form textarea {
+    min-height: 76px;
+    max-height: 220px;
+    resize: vertical;
+    border: 1px solid var(--ds-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: var(--ds-surface);
+    color: var(--text);
+    font: inherit;
+    line-height: 1.4;
+}
+
 @keyframes kitchenPulse {
     0%,
     100% {

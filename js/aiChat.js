@@ -141,6 +141,12 @@ function bindAIEvents() {
         input.value = "";
         sendAIMessage(message);
     });
+    document.getElementById("aiMessageInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            document.getElementById("aiChatForm").requestSubmit();
+        }
+    });
     document.getElementById("aiHistorySearch").addEventListener("input", renderAIChat);
 }
 

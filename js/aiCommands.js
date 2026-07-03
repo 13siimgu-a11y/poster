@@ -64,8 +64,10 @@ export function analyzeFinance() {
 
 export function detectCommand(message, context) {
     const text = message.toLowerCase();
+    const bulkRequest = parseBulkRequest(message);
     const categoryListRequest = parseCategoryListRequest(message);
     const categoryProductsRequest = parseCategoryProductsRequest(message);
+    const updateRequest = parseUpdateRequest(message, context);
     const productRequest = parseProductCreateRequest(text);
     const categoryRequest = parseCategoryCreateRequest(text);
     const ingredientRequest = parseIngredientCreateRequest(text);
@@ -76,6 +78,30 @@ export function detectCommand(message, context) {
 
     if (text.includes("заканч") || text.includes("ниже минимума")) {
         return { reply: analyzeInventory(context.companyId), action: null };
+    }
+
+    if (bulkRequest) {
+        const total = countBulkItems(bulkRequest);
+        return {
+            reply: `Я разобрал большой промпт: найдено объектов для создания/изменения: ${total}. Напишите «подтверждаю», чтобы применить всё через API и базу.`,
+            action: {
+                type: "bulk:execute",
+                pending: true,
+                description: `Выполнить большой промпт: ${total} объектов.`,
+                payload: bulkRequest,
+            },
+        };
+    }
+
+    if (updateRequest) {
+        return {
+            reply: `Я подготовил изменение: ${updateRequest.description}. Напишите «подтверждаю», чтобы сохранить в базе.`,
+            action: {
+                ...updateRequest.action,
+                pending: true,
+                description: updateRequest.description,
+            },
+        };
     }
 
     if (categoryListRequest) {
@@ -321,6 +347,222 @@ function parseCategoryProductsRequest(message) {
         }));
 
     return categoryName && products.length ? { categoryName, products } : null;
+}
+
+function parseBulkRequest(message) {
+    const lines = message
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+    if (lines.length < 2) return null;
+
+    const payload = {
+        categories: [],
+        products: [],
+        ingredients: [],
+        tables: [],
+        employees: [],
+        updates: [],
+    };
+    let section = "";
+    let productCategory = "";
+
+    lines.forEach((line) => {
+        const sectionMatch = line.match(/^(categories|категории|products|товары|меню|ingredients|склад|ингредиенты|tables|столы|employees|сотрудники|персонал|updates|изменения)\s*[:\-]\s*(.*)$/i);
+        const categoryProductsLine = line.match(/^([a-zа-я0-9 /_-]+)\s*[:\-]\s*(.+)$/i);
+
+        if (sectionMatch) {
+            section = normalizeSection(sectionMatch[1]);
+            const rest = sectionMatch[2]?.trim();
+            if (rest) {
+                appendBulkLine(payload, section, rest, productCategory);
+            }
+            return;
+        }
+
+        if (categoryProductsLine && parsePricedList(categoryProductsLine[2]).length) {
+            productCategory = categoryProductsLine[1].trim();
+            parsePricedList(categoryProductsLine[2]).forEach((product) => {
+                payload.products.push({
+                    ...product,
+                    categoryName: productCategory,
+                    description: `Добавлено AI: ${product.name}`,
+                    quantity: 999,
+                    unit: "шт",
+                });
+            });
+            return;
+        }
+
+        appendBulkLine(payload, section, line, productCategory);
+    });
+
+    return countBulkItems(payload) ? payload : null;
+}
+
+function appendBulkLine(payload, section, line, productCategory = "") {
+    if (section === "categories") {
+        payload.categories.push(...splitList(line));
+        return;
+    }
+
+    if (section === "products") {
+        parsePricedList(line).forEach((product) => {
+            payload.products.push({
+                ...product,
+                categoryName: product.categoryName || productCategory || "Блюда",
+                description: `Добавлено AI: ${product.name}`,
+                quantity: 999,
+                unit: "шт",
+            });
+        });
+        return;
+    }
+
+    if (section === "ingredients") {
+        splitList(line).map(parseIngredientItem).filter(Boolean).forEach((ingredient) => payload.ingredients.push(ingredient));
+        return;
+    }
+
+    if (section === "tables") {
+        splitList(line).map(parseTableItem).filter(Boolean).forEach((table) => payload.tables.push(table));
+        return;
+    }
+
+    if (section === "employees") {
+        splitList(line).map(parseEmployeeItem).filter(Boolean).forEach((employee) => payload.employees.push(employee));
+        return;
+    }
+
+    if (section === "updates") {
+        const update = parseUpdateRequest(line, { companyId: "", pageData: {} });
+        if (update?.action) payload.updates.push(update.action);
+    }
+}
+
+function parsePricedList(value) {
+    return value.split(",").map(parsePricedProduct).filter(Boolean);
+}
+
+function parseIngredientItem(value) {
+    const match = value.trim().match(/^(.+?)(?:\s+(\d+(?:[.,]\d+)?)\s*(кг|г|л|мл|шт|pcs|kg|g|l|ml)?)?$/i);
+    if (!match) return null;
+    return {
+        name: capitalize(match[1].trim()),
+        quantity: Number((match[2] || 0).replace(",", ".")),
+        unit: match[3] || "шт",
+        category: "Прочее",
+        minQuantity: 0,
+        costPrice: 0,
+    };
+}
+
+function parseTableItem(value) {
+    const match = value.trim().match(/(?:стол\s*)?(?:№|номер)?\s*(\d+)?(?:\s+на\s+(\d+)\s+мест)?/i);
+    if (!match) return null;
+    return {
+        name: match[1] ? `Стол №${match[1]}` : capitalize(value.trim()),
+        seats: Number(match[2] || 4),
+        hallName: "Основной зал",
+        status: "free",
+    };
+}
+
+function parseEmployeeItem(value) {
+    const [namePart, rolePart] = value.split("-");
+    const names = namePart.trim().split(/\s+/);
+    return {
+        firstName: capitalize(names[0] || "Сотрудник"),
+        lastName: names.slice(1).join(" "),
+        role: normalizeRole(rolePart || ""),
+        status: "working",
+    };
+}
+
+function parseUpdateRequest(message, context) {
+    const text = message.toLowerCase();
+    const renameCategory = message.match(/переименуй\s+категори[юя]\s+(.+?)\s+в\s+(.+)$/i);
+    if (renameCategory) {
+        return {
+            description: `переименовать категорию «${renameCategory[1]}» в «${renameCategory[2]}»`,
+            action: {
+                type: "category:update",
+                payload: { name: renameCategory[1].trim(), nextName: renameCategory[2].trim() },
+            },
+        };
+    }
+
+    const productPrice = message.match(/(?:измени|поменяй|обнови|поставь)\s+цен[уы]\s+(.+?)\s+(?:на\s+)?(\d+(?:[.,]\d+)?)$/i);
+    if (productPrice) {
+        const product = loadProducts(context.companyId).find((item) => item.name.toLowerCase().includes(productPrice[1].trim().toLowerCase()));
+        if (!product) return null;
+        return {
+            description: `изменить цену товара «${product.name}» на ${productPrice[2]}`,
+            action: {
+                type: "product:update",
+                payload: { productId: product.id, patch: { price: Number(productPrice[2].replace(",", ".")) } },
+            },
+        };
+    }
+
+    const ingredientQuantity = message.match(/(?:измени|поменяй|обнови|поставь)\s+(?:остаток|количество)\s+(.+?)\s+(?:на\s+)?(\d+(?:[.,]\d+)?)$/i);
+    if (ingredientQuantity) {
+        return {
+            description: `изменить остаток ингредиента «${ingredientQuantity[1]}» на ${ingredientQuantity[2]}`,
+            action: {
+                type: "ingredient:update",
+                payload: { name: ingredientQuantity[1].trim(), quantity: Number(ingredientQuantity[2].replace(",", ".")) },
+            },
+        };
+    }
+
+    const tableStatus = text.match(/(?:измени|поставь|сделай)\s+стол\s*(?:№|номер)?\s*(\d+).*(свобод|free|занят|occupied|уборк|cleaning)/i);
+    if (tableStatus) {
+        return {
+            description: `изменить статус стола №${tableStatus[1]}`,
+            action: {
+                type: "table:update",
+                payload: { name: `Стол №${tableStatus[1]}`, status: normalizeTableStatus(tableStatus[2]) },
+            },
+        };
+    }
+
+    return null;
+}
+
+function normalizeSection(section) {
+    const value = section.toLowerCase();
+    if (["categories", "категории"].includes(value)) return "categories";
+    if (["products", "товары", "меню"].includes(value)) return "products";
+    if (["ingredients", "склад", "ингредиенты"].includes(value)) return "ingredients";
+    if (["tables", "столы"].includes(value)) return "tables";
+    if (["employees", "сотрудники", "персонал"].includes(value)) return "employees";
+    if (["updates", "изменения"].includes(value)) return "updates";
+    return "";
+}
+
+function splitList(value) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function countBulkItems(payload) {
+    return ["categories", "products", "ingredients", "tables", "employees", "updates"]
+        .reduce((sum, key) => sum + (payload[key]?.length || 0), 0);
+}
+
+function normalizeRole(value) {
+    const role = value.trim().toLowerCase();
+    if (role.includes("касс")) return "cashier";
+    if (role.includes("бар")) return "bartender";
+    if (role.includes("кух") || role.includes("повар")) return "kitchen";
+    if (role.includes("менедж")) return "manager";
+    return "waiter";
+}
+
+function normalizeTableStatus(value) {
+    if (value.includes("занят") || value.includes("occupied")) return "occupied";
+    if (value.includes("уборк") || value.includes("cleaning")) return "cleaning";
+    return "free";
 }
 
 function parsePricedProduct(value) {
