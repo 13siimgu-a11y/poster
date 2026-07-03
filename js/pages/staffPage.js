@@ -1,4 +1,5 @@
 import { createEmployee, deleteEmployee, EMPLOYEE_STATUSES, loadEmployees, updateEmployee } from "../employees.js";
+import { idsEqual } from "../apiPersistence.js";
 import { PERMISSIONS, changePermissions } from "../permissions.js";
 import { archivePosition, createPosition, ensureDefaultPositions, loadPositions } from "../positions.js";
 import { updatePayroll } from "../payroll.js";
@@ -84,7 +85,7 @@ function renderEmployees() {
     document.getElementById("staffContent").innerHTML = `
         <div class="staff-grid">
             ${getFilteredEmployees().map((employee) => {
-                const position = positions.find((item) => Number(item.id) === Number(employee.positionId));
+                const position = positions.find((item) => idsEqual(item.id, employee.positionId));
                 return `
                     <article class="employee-card">
                         <div class="employee-avatar">${employee.avatar ? `<img src="${employee.avatar}" alt="">` : helpers.escapeHtml(employee.firstName[0] || "С")}</div>
@@ -140,7 +141,7 @@ function renderShifts() {
                 <thead><tr><th>Дата</th><th>Сотрудник</th><th>Начало</th><th>Конец</th><th>Минут</th><th>Статус</th><th>Действия</th></tr></thead>
                 <tbody>
                     ${loadShifts(currentCompany.id).map((shift) => {
-                        const employee = employees.find((item) => Number(item.id) === Number(shift.employeeId));
+                        const employee = employees.find((item) => idsEqual(item.id, shift.employeeId));
                         return `<tr><td>${shift.date}</td><td>${helpers.escapeHtml(employee?.firstName || "—")}</td><td>${formatTime(shift.startTime)}</td><td>${formatTime(shift.endTime)}</td><td>${shift.workedMinutes}</td><td>${shift.status}</td><td>${shift.status === "opened" ? `<button data-close-shift="${shift.id}">Закрыть</button>` : ""}</td></tr>`;
                     }).join("") || "<tr><td colspan=\"7\">Смен пока нет.</td></tr>"}
                 </tbody>
@@ -210,7 +211,7 @@ function openEmployeeModal(employee = null) {
             <input name="firstName" placeholder="Имя" value="${employee?.firstName || ""}" required>
             <input name="username" placeholder="Username" value="${employee?.username || ""}">
             <input name="password" placeholder="Password" value="${employee?.password || ""}">
-            <select name="positionId">${positions.map((position) => `<option value="${position.id}" ${Number(employee?.positionId) === Number(position.id) ? "selected" : ""}>${helpers.escapeHtml(position.name)}</option>`).join("")}</select>
+            <select name="positionId">${positions.map((position) => `<option value="${position.id}" ${idsEqual(employee?.positionId, position.id) ? "selected" : ""}>${helpers.escapeHtml(position.name)}</option>`).join("")}</select>
             <select name="role"><option value="manager">manager</option><option value="cashier">cashier</option><option value="waiter">waiter</option><option value="kitchen">kitchen</option><option value="admin">admin</option></select>
             <select name="status">${EMPLOYEE_STATUSES.map((status) => `<option value="${status}" ${employee?.status === status ? "selected" : ""}>${renderStatus(status)}</option>`).join("")}</select>
             <input name="pinCode" placeholder="PIN" value="${employee?.pinCode || ""}">
@@ -235,7 +236,7 @@ function openEmployeeModal(employee = null) {
 }
 
 function openPermissionsModal(employeeId) {
-    const employee = loadEmployees(currentCompany.id).find((item) => Number(item.id) === Number(employeeId));
+    const employee = loadEmployees(currentCompany.id).find((item) => idsEqual(item.id, employeeId));
     document.getElementById("staffModalTitle").textContent = "Права доступа";
     document.getElementById("staffModalBody").innerHTML = `
         <form class="staff-form" id="permissionsForm">
@@ -288,7 +289,7 @@ function openShiftByPin() {
 function bindEmployeeActions() {
     document.querySelectorAll("[data-staff-action]").forEach((button) => {
         button.addEventListener("click", () => {
-            const employee = loadEmployees(currentCompany.id).find((item) => Number(item.id) === Number(button.dataset.employeeId));
+            const employee = loadEmployees(currentCompany.id).find((item) => idsEqual(item.id, button.dataset.employeeId));
             if (!employee) return;
             if (button.dataset.staffAction === "edit") openEmployeeModal(employee);
             if (button.dataset.staffAction === "permissions") openPermissionsModal(employee.id);

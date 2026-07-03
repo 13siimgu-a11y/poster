@@ -217,11 +217,13 @@ function toApiPayload(resourceName, localRecord) {
         delete payload.gender;
         delete payload.address;
         delete payload.password;
-        if (!payload.positionId) {
+        if (!payload.positionId || !looksLikeApiId(payload.positionId)) {
             delete payload.positionId;
         }
         if (!payload.hireDate) {
             delete payload.hireDate;
+        } else if (payload.hireDate.length === 10) {
+            payload.hireDate = `${payload.hireDate}T00:00:00.000Z`;
         }
     }
 
@@ -271,7 +273,8 @@ function nextLocalId(records) {
 function mergeCompanyCache(storageKey, companyId, localRecords) {
     const records = storage.get(storageKey, []);
     const otherCompanyRecords = records.filter((record) => !idsEqual(record.companyId, companyId));
-    storage.set(storageKey, [...otherCompanyRecords, ...localRecords]);
+    const unsyncedCompanyRecords = records.filter((record) => idsEqual(record.companyId, companyId) && !record._apiId);
+    storage.set(storageKey, [...otherCompanyRecords, ...localRecords, ...unsyncedCompanyRecords]);
 }
 
 function patchLocalApiId(storageKey, localId, apiId) {
@@ -283,6 +286,10 @@ function patchLocalApiId(storageKey, localId, apiId) {
 
 function apiPath(companyId, resourcePath) {
     return `/companies/${companyId}/${resourcePath}`;
+}
+
+function looksLikeApiId(value) {
+    return typeof value === "string" && !/^\d+$/.test(value);
 }
 
 function updateTableActiveOrder(companyId, localTableId, apiOrderId) {
