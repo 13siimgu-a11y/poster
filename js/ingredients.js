@@ -1,5 +1,6 @@
 import { createLog } from "./logs.js";
-import { idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
+import { api } from "./apiClient.js";
+import { getApiIdForLocal, idsEqual, mirrorCreate, mirrorDelete, mirrorUpdate } from "./apiPersistence.js";
 import { logStockMovement } from "./stockMovements.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
@@ -76,19 +77,23 @@ export function updateIngredient(ingredientId, data) {
         return null;
     }
 
+    const { __skipApiMirror, ...patch } = data;
+
     ingredients[index] = {
         ...ingredients[index],
-        ...data,
-        name: data.name?.trim() || ingredients[index].name,
-        quantity: data.quantity !== undefined ? Number(data.quantity) : ingredients[index].quantity,
-        minQuantity: data.minQuantity !== undefined ? Number(data.minQuantity) : ingredients[index].minQuantity,
-        maxQuantity: data.maxQuantity !== undefined ? Number(data.maxQuantity) : ingredients[index].maxQuantity,
-        costPrice: data.costPrice !== undefined ? Number(data.costPrice) : ingredients[index].costPrice,
+        ...patch,
+        name: patch.name?.trim() || ingredients[index].name,
+        quantity: patch.quantity !== undefined ? Number(patch.quantity) : ingredients[index].quantity,
+        minQuantity: patch.minQuantity !== undefined ? Number(patch.minQuantity) : ingredients[index].minQuantity,
+        maxQuantity: patch.maxQuantity !== undefined ? Number(patch.maxQuantity) : ingredients[index].maxQuantity,
+        costPrice: patch.costPrice !== undefined ? Number(patch.costPrice) : ingredients[index].costPrice,
         updatedAt: new Date().toISOString(),
     };
 
     saveIngredients(ingredients);
-    mirrorUpdate("ingredients", ingredients[index].companyId, ingredients[index]);
+    if (!__skipApiMirror) {
+        mirrorUpdate("ingredients", ingredients[index].companyId, ingredients[index]);
+    }
     return ingredients[index];
 }
 
@@ -113,7 +118,7 @@ export function addStock(ingredientId, quantity, reason = "Приход", userId
         return null;
     }
 
-    const updated = updateIngredient(ingredientId, { quantity: ingredient.quantity + Number(quantity) });
+    const updated = updateIngredient(ingredientId, { quantity: ingredient.quantity + Number(quantity), __skipApiMirror: true });
     logStockMovement(updated.companyId, updated.id, {
         type: "income",
         quantity,
@@ -121,6 +126,7 @@ export function addStock(ingredientId, quantity, reason = "Приход", userId
         userId,
         balanceAfter: updated.quantity,
     });
+    mirrorStockOperation(updated.companyId, updated.id, "income", { quantity, reason, userId });
     return updated;
 }
 
@@ -131,7 +137,7 @@ export function writeOffStock(ingredientId, quantity, reason = "Списание
         return null;
     }
 
-    const updated = updateIngredient(ingredientId, { quantity: Math.max(0, ingredient.quantity - Number(quantity)) });
+    const updated = updateIngredient(ingredientId, { quantity: Math.max(0, ingredient.quantity - Number(quantity)), __skipApiMirror: true });
     logStockMovement(updated.companyId, updated.id, {
         type: "writeoff",
         quantity: -Math.abs(Number(quantity)),
@@ -139,5 +145,16 @@ export function writeOffStock(ingredientId, quantity, reason = "Списание
         userId,
         balanceAfter: updated.quantity,
     });
+    mirrorStockOperation(updated.companyId, updated.id, "write-off", { quantity, reason, userId });
     return updated;
+}
+
+function mirrorStockOperation(companyId, ingredientId, action, data) {
+    const apiIngredientId = getApiIdForLocal(STORAGE_KEYS.ingredients, ingredientId);
+    if (!apiIngredientId) {
+        return;
+    }
+    api.post(`/companies/${companyId}/ingredients/${apiIngredientId}/${action}`, data).catch(() => {
+        mirrorUpdate("ingredients", companyId, loadIngredients().find((item) => idsEqual(item.id, ingredientId)));
+    });
 }

@@ -1,21 +1,23 @@
+import { api } from "./apiClient.js";
+import { getApiIdForLocal, idsEqual } from "./apiPersistence.js";
 import { loadIngredients, updateIngredient } from "./ingredients.js";
 import { logStockMovement } from "./stockMovements.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 
 export function performInventory(companyId, ingredientId, actualQuantity, userId = 0) {
     const audits = storage.get(STORAGE_KEYS.inventoryAudits, []);
-    const ingredient = loadIngredients(companyId).find((item) => Number(item.id) === Number(ingredientId));
+    const ingredient = loadIngredients(companyId).find((item) => idsEqual(item.id, ingredientId));
 
     if (!ingredient) {
         return null;
     }
 
     const difference = Number(actualQuantity) - Number(ingredient.quantity);
-    const updated = updateIngredient(ingredientId, { quantity: Number(actualQuantity) });
+    const updated = updateIngredient(ingredientId, { quantity: Number(actualQuantity), __skipApiMirror: true });
     const audit = {
         id: audits.length ? Math.max(...audits.map((item) => Number(item.id))) + 1 : 1,
-        companyId: Number(companyId),
-        ingredientId: Number(ingredientId),
+        companyId,
+        ingredientId,
         expectedQuantity: ingredient.quantity,
         actualQuantity: Number(actualQuantity),
         difference,
@@ -31,10 +33,19 @@ export function performInventory(companyId, ingredientId, actualQuantity, userId
         userId,
         balanceAfter: updated.quantity,
     });
+    mirrorInventoryAudit(companyId, ingredientId, actualQuantity);
     return audit;
 }
 
 export function loadInventoryAudits(companyId = null) {
     const audits = storage.get(STORAGE_KEYS.inventoryAudits, []);
-    return companyId ? audits.filter((audit) => Number(audit.companyId) === Number(companyId)) : audits;
+    return companyId ? audits.filter((audit) => idsEqual(audit.companyId, companyId)) : audits;
+}
+
+function mirrorInventoryAudit(companyId, ingredientId, actualQuantity) {
+    const apiIngredientId = getApiIdForLocal(STORAGE_KEYS.ingredients, ingredientId);
+    if (!apiIngredientId) {
+        return;
+    }
+    api.post(`/companies/${companyId}/ingredients/${apiIngredientId}/audit`, { actualQuantity }).catch(() => null);
 }

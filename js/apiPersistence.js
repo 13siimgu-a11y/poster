@@ -62,7 +62,12 @@ export function mirrorCreate(resourceName, companyId, localRecord) {
     }
 
     api.post(apiPath(companyId, config.path), toApiPayload(resourceName, localRecord))
-        .then((remoteRecord) => patchLocalApiId(config.key, localRecord.id, remoteRecord.id))
+        .then((remoteRecord) => {
+            patchLocalApiId(config.key, localRecord.id, remoteRecord.id);
+            if (resourceName === "tableOrders" && localRecord.tableId) {
+                updateTableActiveOrder(companyId, localRecord.tableId, remoteRecord.id);
+            }
+        })
         .catch(() => null);
 }
 
@@ -278,4 +283,12 @@ function patchLocalApiId(storageKey, localId, apiId) {
 
 function apiPath(companyId, resourcePath) {
     return `/companies/${companyId}/${resourcePath}`;
+}
+
+function updateTableActiveOrder(companyId, localTableId, apiOrderId) {
+    const table = storage.get(STORAGE_KEYS.tables, []).find((item) => idsEqual(item.id, localTableId));
+    if (!table?._apiId) {
+        return;
+    }
+    api.patch(`${apiPath(companyId, "tables")}/${table._apiId}`, { activeOrderId: apiOrderId }).catch(() => null);
 }
