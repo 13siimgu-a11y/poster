@@ -1,7 +1,7 @@
 import { canShowAction } from "../accessPolicy.js";
 import { loadCategories } from "../categories.js";
 import { formatMoney } from "../currency.js";
-import { loadFloor, ensureDefaultHall } from "../floor.js";
+import { createHall, loadFloor, ensureDefaultHall } from "../floor.js";
 import { addStock, loadIngredients, performInventory, writeOffStock } from "../inventory.js";
 import { createKitchenOrder, loadKitchenOrders } from "../kitchenOrders.js";
 import { idsEqual } from "../apiPersistence.js";
@@ -16,9 +16,10 @@ import {
     refundReceipt,
 } from "../pos.js";
 import { storage, STORAGE_KEYS } from "../storage.js";
-import { changeTableStatus, loadTables, TABLE_STATUSES, updateTable } from "../tables.js";
+import { changeTableStatus, createTable, loadTables, TABLE_STATUSES, updateTable } from "../tables.js";
 
 const STAFF_SCREENS = {
+    quick: "quick",
     floor: "floor",
     receipts: "receipts",
     reports: "reports",
@@ -39,11 +40,12 @@ const TABLE_STATE_META = {
 let currentCompany = null;
 let currentUser = null;
 let helpers = {};
-let activeScreen = STAFF_SCREENS.floor;
+let activeScreen = STAFF_SCREENS.quick;
 let activeHallId = "all";
 let activeOrderId = null;
 let activeReceiptFilter = "all";
 let activeProductFilter = "all";
+let activeProductCategoryId = "";
 let productSearch = "";
 let receiptSearch = "";
 let inventorySearch = "";
@@ -88,7 +90,8 @@ function renderWorkspace() {
                 <p>${escapeHtml(currentCompany.name)} · все основные действия рядом.</p>
             </div>
             <div class="worktop__actions">
-                <button class="secondary-btn" type="button" data-work-action="new-order">Новый</button>
+                <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек</button>
+                <button class="secondary-btn" type="button" data-work-action="new-order">Стол</button>
                 <button class="primary-btn" type="button" data-work-action="pay">Оплата</button>
                 ${canShowAction(currentUser, "ai:use") ? '<button class="secondary-btn" type="button" data-work-action="ai">AI</button>' : ""}
             </div>
@@ -98,7 +101,8 @@ function renderWorkspace() {
         <div class="workspace-layout" id="workspaceLayout"></div>
 
         <nav class="workspace-bottom-nav" aria-label="Быстрые действия сотрудника">
-            ${renderBottomButton("floor", "⌂", "Зал")}
+            ${renderBottomButton("quick", "⚡", "Быстро")}
+            ${renderBottomButton("floor", "⌂", "Залы")}
             ${renderBottomButton("receipts", "▤", "Чеки")}
             ${renderBottomButton("reports", "▥", "Отчеты")}
             ${canShowAction(currentUser, "inventory:manage") ? renderBottomButton("inventory", "▧", "Склад") : ""}
@@ -155,6 +159,12 @@ function renderWorkspaceNotices() {
 function renderActiveScreen() {
     const layout = document.getElementById("workspaceLayout");
 
+    if (activeScreen === STAFF_SCREENS.quick) {
+        layout.innerHTML = renderUnifiedWorkspace();
+        bindUnifiedWorkspace();
+        return;
+    }
+
     if (activeScreen === STAFF_SCREENS.receipts) {
         layout.innerHTML = renderReceiptArchive();
         bindReceiptArchive();
@@ -181,6 +191,68 @@ function renderActiveScreen() {
 
     layout.innerHTML = renderFloorWorkspace();
     bindFloorWorkspace();
+}
+
+function renderUnifiedWorkspace() {
+    const halls = loadFloor(currentCompany.id).filter((hall) => !hall.archived);
+    const categories = loadCategories(currentCompany.id).filter((category) => category.active);
+
+    return `
+        <section class="workspace-unified">
+            <div class="workspace-unified__products panel">
+                <div class="workspace-section-head">
+                    <div>
+                        <h3>Товары</h3>
+                        <p>Нажмите товар - он сразу попадет в текущий заказ.</p>
+                    </div>
+                    <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек</button>
+                </div>
+                <div class="workspace-toolbar">
+                    <div class="workspace-search">
+                        <label for="workspaceProductSearch">Поиск товара</label>
+                        <input id="workspaceProductSearch" type="search" placeholder="Название, SKU или категория" value="${escapeHtml(productSearch)}">
+                    </div>
+                    <div class="workspace-product-tabs">
+                        <button class="${activeProductFilter === "all" ? "is-active" : ""}" type="button" data-product-filter="all">Все</button>
+                        <button class="${activeProductFilter === "popular" ? "is-active" : ""}" type="button" data-product-filter="popular">Частые</button>
+                        <button class="${activeProductFilter === "favorites" ? "is-active" : ""}" type="button" data-product-filter="favorites">Любимые</button>
+                    </div>
+                </div>
+                <div class="workspace-category-rail">
+                    <button class="${activeProductCategoryId === "" ? "is-active" : ""}" type="button" data-product-category="">Все</button>
+                    ${categories.map((category) => `
+                        <button class="${idsEqual(activeProductCategoryId, category.id) ? "is-active" : ""}" type="button" data-product-category="${category.id}">
+                            ${escapeHtml(category.name)}
+                        </button>
+                    `).join("")}
+                </div>
+                ${renderQuickProducts(24)}
+            </div>
+
+            <div class="workspace-unified__floor panel">
+                <div class="workspace-section-head">
+                    <div>
+                        <h3>Столы</h3>
+                        <p>Выберите стол или работайте через быстрый чек.</p>
+                    </div>
+                </div>
+                <div class="workspace-hall-tabs">
+                    <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
+                    ${halls.map((hall) => `
+                        <button class="${idsEqual(activeHallId, hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
+                            ${escapeHtml(hall.name)}
+                        </button>
+                    `).join("")}
+                </div>
+                <div class="workspace-floor-grid workspace-floor-grid--compact">
+                    ${renderTableMap(halls)}
+                </div>
+            </div>
+        </section>
+        <aside class="workspace-order-card panel" id="workspaceOrderPanel">
+            ${renderActiveOrder()}
+        </aside>
+    `;
 }
 
 function renderFloorWorkspace() {
@@ -240,11 +312,11 @@ function renderTableMap(halls) {
     ));
 
     return tables.map((table) => {
-        const order = orders.find((item) => Number(item.id) === Number(table.activeOrderId));
+        const order = orders.find((item) => idsEqual(item.id, table.activeOrderId));
         const reservation = reservations.find((item) => idsEqual(item.tableId, table.id) && item.status !== "cancelled");
         const state = getTableState(table, order, reservation);
         return `
-            <button class="workspace-table workspace-table--${state.tone} ${Number(order?.id) === Number(activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}">
+            <button class="workspace-table workspace-table--${state.tone} ${idsEqual(order?.id, activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}">
                 <span>${state.icon}</span>
                 <strong>${escapeHtml(table.name)}</strong>
                 <small>${escapeHtml(table.hallName)}</small>
@@ -304,6 +376,41 @@ function bindFloorWorkspace() {
         button.addEventListener("click", () => {
             activeHallId = button.dataset.workHall;
             activeOrderId = null;
+            renderActiveScreen();
+        });
+    });
+
+    document.querySelectorAll("[data-work-table]").forEach((button) => {
+        button.addEventListener("click", () => openTableOrder(button.dataset.workTable));
+    });
+
+    bindOrderPanelActions();
+}
+
+function bindUnifiedWorkspace() {
+    document.getElementById("workspaceProductSearch")?.addEventListener("input", (event) => {
+        productSearch = event.target.value;
+        renderActiveScreen();
+        setTimeout(() => document.getElementById("workspaceProductSearch")?.focus(), 0);
+    });
+
+    document.querySelectorAll("[data-product-filter]").forEach((button) => {
+        button.addEventListener("click", () => {
+            activeProductFilter = button.dataset.productFilter;
+            renderActiveScreen();
+        });
+    });
+
+    document.querySelectorAll("[data-product-category]").forEach((button) => {
+        button.addEventListener("click", () => {
+            activeProductCategoryId = button.dataset.productCategory;
+            renderActiveScreen();
+        });
+    });
+
+    document.querySelectorAll("[data-work-hall]").forEach((button) => {
+        button.addEventListener("click", () => {
+            activeHallId = button.dataset.workHall;
             renderActiveScreen();
         });
     });
@@ -379,8 +486,8 @@ function renderActiveOrder() {
     `;
 }
 
-function renderQuickProducts() {
-    const products = filterWorkspaceProducts().slice(0, 12);
+function renderQuickProducts(limit = 12) {
+    const products = filterWorkspaceProducts().slice(0, limit);
     return `
         <div class="workspace-products">
             ${products.length ? products.map((product) => `
@@ -397,19 +504,20 @@ function renderQuickProducts() {
 function filterWorkspaceProducts() {
     const query = productSearch.trim().toLowerCase();
     const categories = loadCategories(currentCompany.id);
-    const categoryById = new Map(categories.map((category) => [Number(category.id), category]));
+    const categoryById = new Map(categories.map((category) => [String(category.id), category]));
     return getAvailablePosProducts(currentCompany.id).filter((product) => {
-        const category = categoryById.get(Number(product.categoryId));
+        const category = categoryById.get(String(product.categoryId));
         const favoriteNames = ["капучино", "эспрессо", "латте", "бургер", "картофель фри", "кола"];
         const isFavorite = product.popular || product.recommended || favoriteNames.includes(product.name.toLowerCase());
         const matchesFilter = activeProductFilter === "all"
             || (activeProductFilter === "popular" && product.popular)
             || (activeProductFilter === "favorites" && isFavorite);
+        const matchesCategory = !activeProductCategoryId || idsEqual(product.categoryId, activeProductCategoryId);
         const matchesQuery = !query
             || product.name.toLowerCase().includes(query)
             || product.sku.toLowerCase().includes(query)
             || category?.name.toLowerCase().includes(query);
-        return matchesFilter && matchesQuery;
+        return matchesFilter && matchesCategory && matchesQuery;
     });
 }
 
@@ -433,7 +541,7 @@ function bindOrderPanelActions() {
 
 function openTableOrder(tableId) {
     const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, tableId));
-    let order = loadOrders(currentCompany.id, "opened").find((item) => Number(item.id) === Number(table?.activeOrderId));
+    let order = loadOrders(currentCompany.id, "opened").find((item) => idsEqual(item.id, table?.activeOrderId));
 
     if (!table) {
         return;
@@ -483,12 +591,15 @@ function showNewOrderModal(table) {
 }
 
 function addProductToOrder(productId) {
-    const order = getActiveOrder();
+    let order = getActiveOrder();
     const product = loadProducts(currentCompany.id).find((item) => Number(item.id) === Number(productId));
 
-    if (!order || !product) {
-        toast("Сначала выберите стол и создайте заказ");
+    if (!product) {
         return;
+    }
+
+    if (!order) {
+        order = createQuickSaleOrder();
     }
 
     const item = {
@@ -509,6 +620,52 @@ function addProductToOrder(productId) {
     changeTableStatus(order.tableId, "occupied");
     activeOrderId = updated.id;
     renderActiveScreen();
+}
+
+function createQuickSaleOrder() {
+    const table = getOrCreateQuickSaleTable();
+    let order = loadOrders(currentCompany.id, "opened").find((item) => idsEqual(item.tableId, table.id));
+
+    if (!order) {
+        order = createOrder(currentCompany.id, table.hallId, table.id, {
+            waiterId: currentUser.id,
+            cashierId: currentUser.role === "cashier" ? currentUser.id : null,
+            guests: 1,
+            comments: "Быстрый чек",
+        });
+    }
+
+    activeOrderId = order.id;
+    changeTableStatus(table.id, "occupied");
+    return order;
+}
+
+function getOrCreateQuickSaleTable() {
+    let hall = loadFloor(currentCompany.id).find((item) => item.name === "Бар / Касса");
+    if (!hall) {
+        hall = createHall(currentCompany.id, {
+            name: "Бар / Касса",
+            description: "Служебный зал для быстрых чеков",
+            active: true,
+        });
+    }
+
+    let table = loadTables(currentCompany.id, hall.id).find((item) => item.name === "Быстрый чек");
+    if (!table) {
+        table = createTable(currentCompany.id, hall.id, {
+            name: "Быстрый чек",
+            seats: 1,
+            status: "free",
+            type: "square",
+            x: 80,
+            y: 80,
+            width: 120,
+            height: 90,
+            comment: "Для продаж без стола",
+        });
+    }
+
+    return table;
 }
 
 function handleOrderItemAction(action, itemId) {
@@ -681,7 +838,7 @@ function openPaymentModal(order) {
         closeOrder(order.id, payments);
         activeOrderId = null;
         closeWorkspaceModal();
-        activeScreen = STAFF_SCREENS.receipts;
+        activeScreen = STAFF_SCREENS.quick;
         renderWorkspace();
         toast("Заказ закрыт");
     });
@@ -700,7 +857,7 @@ function confirmCloseOrder(order) {
         closeOrder(order.id, order.payments || []);
         activeOrderId = null;
         closeWorkspaceModal();
-        activeScreen = STAFF_SCREENS.receipts;
+        activeScreen = STAFF_SCREENS.quick;
         renderWorkspace();
         toast("Заказ закрыт");
     });
@@ -719,7 +876,7 @@ function confirmCancelOrder(order) {
         cancelOrder(order.id);
         activeOrderId = null;
         closeWorkspaceModal();
-        activeScreen = STAFF_SCREENS.receipts;
+        activeScreen = STAFF_SCREENS.quick;
         renderWorkspace();
         toast("Заказ отменен");
     });
@@ -1382,8 +1539,17 @@ function closeShiftModal() {
 }
 
 function handleWorkspaceAction(action) {
+    if (action === "quick-sale") {
+        activeScreen = STAFF_SCREENS.quick;
+        const order = createQuickSaleOrder();
+        activeOrderId = order.id;
+        renderWorkspace();
+        toast("Быстрый чек открыт");
+        return;
+    }
+
     if (action === "new-order") {
-        activeScreen = STAFF_SCREENS.floor;
+        activeScreen = STAFF_SCREENS.quick;
         renderWorkspace();
         toast("Выберите свободный стол");
     }
@@ -1419,7 +1585,7 @@ function handleWorkspaceHotkeys(event) {
     }
 
     const keyMap = {
-        F2: () => handleWorkspaceAction("new-order"),
+        F2: () => handleWorkspaceAction("quick-sale"),
         F3: () => document.getElementById("workspaceProductSearch")?.focus(),
         F4: () => handleWorkspaceAction("pay"),
         F5: () => getActiveOrder() && sendOrderToKitchen(getActiveOrder()),
@@ -1440,11 +1606,11 @@ function getActiveOrder() {
         return null;
     }
 
-    return loadOrders(currentCompany.id, "opened").find((order) => Number(order.id) === Number(activeOrderId)) || null;
+    return loadOrders(currentCompany.id, "opened").find((order) => idsEqual(order.id, activeOrderId)) || null;
 }
 
 function getInitialActiveOrderId() {
-    const ownOrder = loadOrders(currentCompany?.id, "opened").find((order) => Number(order.waiterId) === Number(currentUser?.id));
+    const ownOrder = loadOrders(currentCompany?.id, "opened").find((order) => idsEqual(order.waiterId, currentUser?.id));
     return ownOrder?.id || null;
 }
 
