@@ -4817,6 +4817,30 @@ button.is-rippling::after {
     font-size: 16px;
 }
 
+.workspace-quick-sale-card {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    min-height: 82px;
+    margin: 0 0 14px;
+    padding: 18px;
+    border: 0;
+    border-radius: 22px;
+    background: linear-gradient(135deg, var(--primary), #1D4ED8);
+    color: #fff;
+    text-align: left;
+    box-shadow: 0 18px 38px rgba(37, 99, 235, .28);
+}
+
+.workspace-quick-sale-card strong {
+    font-size: 20px;
+}
+
+.workspace-quick-sale-card span {
+    color: rgba(255, 255, 255, .82);
+    font-weight: 800;
+}
+
 .workspace-table {
     min-height: 132px;
     border: 1px solid var(--border);

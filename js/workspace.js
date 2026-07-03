@@ -12,6 +12,7 @@ let toastTimer = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
     setNotificationHandler(showToast);
+    renderWorkspaceLoading();
     currentUser = checkUser();
 
     if (!currentUser) {
@@ -29,29 +30,48 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    await syncCoreData(currentCompany.id).catch(() => {
-        showToast("Не удалось загрузить данные из базы. Проверьте интернет и обновите страницу.", "error");
-    });
-
     try {
         renderShell();
         bindShellActions();
-        initStaffWorkspacePage({
-            company: currentCompany,
-            user: currentUser,
-            showToast,
-            escapeHtml,
-        });
+        renderStaffWorkspace();
         initAIChat(() => ({
             companyId: currentCompany.id,
             user: currentUser,
             currentView: "workspace",
         }), { showToast });
+        syncCoreData(currentCompany.id)
+            .then(renderStaffWorkspace)
+            .catch(() => {
+                showToast("Не удалось загрузить данные из базы. Проверьте интернет и обновите страницу.", "error");
+            });
     } catch (error) {
         console.error(error);
         renderWorkspaceError("Не удалось открыть рабочее место", "Обновите страницу. Если ошибка повторится, войдите заново.");
     }
 });
+
+function renderStaffWorkspace() {
+    initStaffWorkspacePage({
+        company: currentCompany,
+        user: currentUser,
+        showToast,
+        escapeHtml,
+    });
+}
+
+function renderWorkspaceLoading() {
+    const root = document.getElementById("staffWorkspace");
+    if (!root) {
+        return;
+    }
+
+    root.innerHTML = `
+        <div class="panel empty-state empty-state--action">
+            <h2>Открываем рабочее место</h2>
+            <p>Загружаем кассу, столы и меню...</p>
+        </div>
+    `;
+}
 
 function renderWorkspaceError(title, text) {
     const root = document.getElementById("staffWorkspace");

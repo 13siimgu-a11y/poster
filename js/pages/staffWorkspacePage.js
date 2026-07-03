@@ -216,6 +216,7 @@ function renderUnifiedWorkspace() {
     const halls = loadFloor(currentCompany.id).filter((hall) => !hall.archived);
     const categories = loadCategories(currentCompany.id).filter((category) => category.active);
     const order = getActiveOrder();
+    const canQuickSale = ["cashier", "bartender", "barmen"].includes(currentUser.role);
 
     if (!order) {
         return `
@@ -226,6 +227,12 @@ function renderUnifiedWorkspace() {
                         <p>Нажмите на стол, заказ откроется сразу.</p>
                     </div>
                 </div>
+                ${canQuickSale ? `
+                    <button class="workspace-quick-sale-card" type="button" data-work-action="quick-sale">
+                        <strong>Быстрый чек / Бар</strong>
+                        <span>Открыть кассу без выбора стола</span>
+                    </button>
+                ` : ""}
                 <div class="workspace-hall-tabs">
                     <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
                     ${halls.map((hall) => `
