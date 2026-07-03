@@ -64,6 +64,7 @@ export function analyzeFinance() {
 
 export function detectCommand(message, context) {
     const text = message.toLowerCase();
+    const categoryListRequest = parseCategoryListRequest(message);
     const productRequest = parseProductCreateRequest(text);
     const categoryRequest = parseCategoryCreateRequest(text);
     const ingredientRequest = parseIngredientCreateRequest(text);
@@ -74,6 +75,21 @@ export function detectCommand(message, context) {
 
     if (text.includes("заканч") || text.includes("ниже минимума")) {
         return { reply: analyzeInventory(context.companyId), action: null };
+    }
+
+    if (categoryListRequest) {
+        return {
+            reply: `Я подготовил ${categoryListRequest.categories.length} категорий: ${categoryListRequest.categories.join(", ")}. Напишите «подтверждаю», чтобы создать их в базе.`,
+            action: {
+                type: "menu:template:create",
+                pending: true,
+                description: `Создать категории: ${categoryListRequest.categories.join(", ")}.`,
+                payload: {
+                    categories: categoryListRequest.categories,
+                    products: [],
+                },
+            },
+        };
     }
 
     if (categoryRequest) {
@@ -246,6 +262,19 @@ function parseCategoryCreateRequest(text) {
         icon: "🍽",
         active: true,
     };
+}
+
+function parseCategoryListRequest(message) {
+    const match = message.match(/(?:создай|добавь)\s+категори(?:и|й)\s*(?:такие|:)?\s+(.+)$/i);
+    if (!match) return null;
+
+    const categories = match[1]
+        .split(",")
+        .map((name) => name.trim())
+        .map((name) => name.replace(/[.;]+$/g, "").trim())
+        .filter(Boolean);
+
+    return categories.length > 1 ? { categories } : null;
 }
 
 function parseIngredientCreateRequest(text) {
