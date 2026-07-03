@@ -151,21 +151,21 @@ function bindAuthForms() {
 
     resetPasswordForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const email = new FormData(resetPasswordForm).get("email");
-        const result = await resetPassword(String(email || ""));
+        const formData = new FormData(resetPasswordForm);
+        const password = String(formData.get("password") || "");
+        const result = await resetPassword(formData);
 
         if (!result) {
             return;
         }
 
-        loginForm.elements.username.value = result.username || result.email;
-        loginForm.elements.password.value = result.temporaryPassword;
+        loginForm.elements.username.value = result.email || result.username;
+        loginForm.elements.password.value = password;
         document.getElementById("resetPasswordResult").hidden = false;
         document.getElementById("resetPasswordResult").innerHTML = `
-            <strong>Новый пароль создан</strong>
-            <p>Мы уже вставили его в форму входа.</p>
-            <code>${escapeHtml(result.temporaryPassword)}</code>
-            <button class="btn btn--primary btn--full" type="button" id="openLoginAfterReset">Войти с новым паролем</button>
+            <strong>Новый пароль сохранен</strong>
+            <p>Мы уже вставили email и пароль в форму входа.</p>
+            <button class="btn btn--primary btn--full" type="button" id="openLoginAfterReset">Перейти ко входу</button>
         `;
         document.getElementById("openLoginAfterReset").addEventListener("click", () => {
             closeModal("resetPasswordModal");

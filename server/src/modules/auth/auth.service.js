@@ -27,7 +27,7 @@ export async function registerUser(data) {
     const existingUser = await prisma.user.findFirst({
         where: {
             OR: [
-                { username: data.username },
+                { username: { equals: data.username, mode: "insensitive" } },
                 { email: data.email.toLowerCase() },
             ],
         },
@@ -52,12 +52,13 @@ export async function registerUser(data) {
 
 export async function loginUser(data, meta = {}) {
     await ensureDefaultSuperAdmin();
+    const usernameOrEmail = data.usernameOrEmail.trim();
 
     const user = await prisma.user.findFirst({
         where: {
             OR: [
-                { username: data.usernameOrEmail },
-                { email: data.usernameOrEmail.toLowerCase() },
+                { username: { equals: usernameOrEmail, mode: "insensitive" } },
+                { email: usernameOrEmail.toLowerCase() },
             ],
         },
     });
@@ -78,19 +79,22 @@ export async function loginUser(data, meta = {}) {
     return issueAuthTokens(user, meta);
 }
 
-export async function resetPasswordByEmail(email) {
+export async function resetPasswordByEmail(data) {
     await ensureDefaultSuperAdmin();
 
+    if (data.password !== data.repeatPassword) {
+        throw new ApiError(400, "Passwords do not match");
+    }
+
     const user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() },
+        where: { email: data.email.toLowerCase() },
     });
 
     if (!user) {
         throw new ApiError(404, "User with this email was not found");
     }
 
-    const temporaryPassword = createTemporaryPassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
+    const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
     await prisma.user.update({
         where: { id: user.id },
         data: { passwordHash },
@@ -99,12 +103,7 @@ export async function resetPasswordByEmail(email) {
     return {
         username: user.username,
         email: user.email,
-        temporaryPassword,
     };
-}
-
-function createTemporaryPassword() {
-    return `POS-${crypto.randomBytes(4).toString("hex")}`;
 }
 
 async function ensureDefaultSuperAdmin() {

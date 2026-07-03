@@ -71,16 +71,6 @@ button {
     color: var(--muted);
 }
 
-.reset-password-result code {
-    display: block;
-    padding: 12px;
-    border-radius: 12px;
-    background: #0F172A;
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 800;
-    overflow-x: auto;
-}
 
 button,
 input,

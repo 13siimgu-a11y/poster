@@ -29,6 +29,8 @@ const loginSchema = z.object({
 
 const resetPasswordSchema = z.object({
     email: z.string().email(),
+    password: z.string().min(6),
+    repeatPassword: z.string().min(6),
 });
 
 function setRefreshCookie(response, refreshToken) {
@@ -56,7 +58,7 @@ authRouter.post("/login", validate(loginSchema), asyncHandler(async (request, re
 }));
 
 authRouter.post("/reset-password", validate(resetPasswordSchema), asyncHandler(async (request, response) => {
-    const result = await resetPasswordByEmail(request.body.email);
+    const result = await resetPasswordByEmail(request.body);
     response.json(result);
 }));
 

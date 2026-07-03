@@ -133,10 +133,29 @@ export async function login(formData) {
     }
 }
 
-export async function resetPassword(email) {
+export async function resetPassword(formData) {
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const password = String(formData.get("password") || "");
+    const repeatPassword = String(formData.get("repeatPassword") || "");
+
+    if (!email || !password || !repeatPassword) {
+        notify("Заполните email и новый пароль", "error");
+        return null;
+    }
+
+    if (password.length < 6) {
+        notify("Пароль должен содержать минимум 6 символов", "error");
+        return null;
+    }
+
+    if (password !== repeatPassword) {
+        notify("Пароли не совпадают", "error");
+        return null;
+    }
+
     try {
-        const result = await api.post("/auth/reset-password", { email: email.trim().toLowerCase() });
-        notify("Новый пароль создан", "success");
+        const result = await api.post("/auth/reset-password", { email, password, repeatPassword });
+        notify("Новый пароль сохранен", "success");
         return result;
     } catch (error) {
         const message = error.message?.toLowerCase().includes("not found")
