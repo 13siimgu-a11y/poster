@@ -97,7 +97,12 @@ export async function register(formData) {
         notify("Регистрация успешно завершена", "success");
         return user;
     } catch (error) {
-        notify(error.message || "Не удалось зарегистрироваться", "error");
+        const message = error.message?.toLowerCase().includes("already exists")
+            || error.message?.toLowerCase().includes("exists")
+            || error.message?.toLowerCase().includes("409")
+            ? "Пользователь с таким Username или Email уже существует. Попробуйте войти."
+            : error.message || "Не удалось зарегистрироваться";
+        notify(message, "error");
         return null;
     }
 }

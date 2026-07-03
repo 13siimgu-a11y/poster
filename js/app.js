@@ -63,6 +63,10 @@ export function closeModal(modalElement) {
         return;
     }
 
+    if (modal.contains(document.activeElement)) {
+        document.activeElement.blur();
+    }
+
     modal.classList.remove("is-open");
     modal.setAttribute("aria-hidden", "true");
     modal.querySelector("form")?.reset();
