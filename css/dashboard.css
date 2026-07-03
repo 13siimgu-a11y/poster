@@ -3347,6 +3347,25 @@ table tr:hover td,
     gap: 18px;
 }
 
+.workspace-layout--quick {
+    grid-template-columns: minmax(380px, 1.05fr) minmax(320px, .8fr) minmax(380px, .9fr);
+    align-items: start;
+}
+
+.workspace-layout--quick .workspace-unified {
+    display: contents;
+}
+
+.glass-panel,
+.worktop,
+.workspace-bottom-nav,
+.workspace-modal__content {
+    border: 1px solid rgba(255, 255, 255, .42);
+    background: color-mix(in srgb, var(--card) 78%, transparent);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .10);
+}
+
 .workspace-unified {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
@@ -3374,8 +3393,10 @@ table tr:hover td,
     border-radius: 999px;
     background: var(--card);
     color: var(--text);
-    padding: 10px 14px;
+    min-height: 48px;
+    padding: 10px 16px;
     font-weight: 800;
+    transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
 }
 
 .workspace-category-rail button.is-active {
@@ -3385,13 +3406,13 @@ table tr:hover td,
 }
 
 .workspace-floor-grid--compact {
-    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
     min-height: 220px;
 }
 
 .workspace-floor-grid--compact .workspace-table {
-    min-height: 112px;
-    border-radius: 18px;
+    min-height: 138px;
+    border-radius: 22px;
     padding: 12px;
 }
 
@@ -3405,6 +3426,18 @@ table tr:hover td,
 
 .workspace-full {
     grid-column: 1 / -1;
+}
+
+.workspace-full.panel,
+.workspace-floor-card.panel,
+.workspace-report-list,
+.metric-card,
+.workspace-receipt-row,
+.workspace-inventory-row,
+.workspace-menu-action {
+    border-color: rgba(255, 255, 255, .42);
+    background: color-mix(in srgb, var(--card) 84%, transparent);
+    backdrop-filter: blur(16px);
 }
 
 .workspace-search {
@@ -3464,7 +3497,7 @@ table tr:hover td,
     min-height: 140px;
     border: 2px solid var(--border);
     border-radius: 24px;
-    background: var(--card);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--card) 88%, transparent), color-mix(in srgb, var(--bg-soft) 82%, transparent));
     color: var(--text);
     box-shadow: var(--shadow-sm);
     padding: 14px;
@@ -3472,7 +3505,9 @@ table tr:hover td,
     gap: 5px;
     text-align: left;
     cursor: pointer;
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
 }
 
 .workspace-table:hover,
@@ -3481,7 +3516,7 @@ table tr:hover td,
     box-shadow: var(--shadow);
 }
 
-.workspace-table span {
+.workspace-table__status {
     font-size: 28px;
     line-height: 1;
 }
@@ -3501,19 +3536,29 @@ table tr:hover td,
     color: var(--primary);
 }
 
-.workspace-table--free { border-color: #16A34A; }
-.workspace-table--arrived { border-color: #EAB308; }
-.workspace-table--ordering { border-color: #F97316; }
-.workspace-table--cooking { border-color: #2563EB; }
-.workspace-table--payment { border-color: #9333EA; }
-.workspace-table--attention { border-color: #DC2626; }
-.workspace-table--reserved { border-color: #111827; }
+.workspace-table__label {
+    width: fit-content;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .10);
+    color: var(--primary) !important;
+    font-weight: 900;
+}
+
+.workspace-table--free { border-color: #16A34A; background: linear-gradient(145deg, rgba(22, 163, 74, .12), var(--card)); }
+.workspace-table--arrived { border-color: #EAB308; background: linear-gradient(145deg, rgba(234, 179, 8, .14), var(--card)); }
+.workspace-table--ordering { border-color: #F97316; background: linear-gradient(145deg, rgba(249, 115, 22, .14), var(--card)); }
+.workspace-table--cooking { border-color: #2563EB; background: linear-gradient(145deg, rgba(37, 99, 235, .14), var(--card)); }
+.workspace-table--payment { border-color: #9333EA; background: linear-gradient(145deg, rgba(147, 51, 234, .14), var(--card)); }
+.workspace-table--attention { border-color: #DC2626; background: linear-gradient(145deg, rgba(220, 38, 38, .14), var(--card)); }
+.workspace-table--reserved { border-color: #111827; background: linear-gradient(145deg, rgba(15, 23, 42, .14), var(--card)); }
 
 .workspace-order-card {
     position: sticky;
     top: 18px;
-    max-height: calc(100vh - 150px);
+    max-height: calc(100dvh - 150px);
     overflow: auto;
+    border-radius: 24px;
 }
 
 .workspace-order-head,
@@ -3526,6 +3571,14 @@ table tr:hover td,
     align-items: center;
     border-bottom: 1px solid var(--border);
     padding: 12px 0;
+}
+
+.workspace-receipt-row,
+.workspace-inventory-row {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
 }
 
 .workspace-order-head span,
@@ -3547,12 +3600,53 @@ table tr:hover td,
 .workspace-menu-action {
     border: 1px solid var(--border);
     border-radius: 18px;
-    background: var(--bg-soft);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--card) 88%, transparent), color-mix(in srgb, var(--bg-soft) 76%, transparent));
     color: var(--text);
     padding: 14px;
     text-align: left;
-    min-height: 84px;
+    min-height: 128px;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.workspace-product-card__media {
+    display: grid !important;
+    place-items: center;
+    width: 100%;
+    height: 72px;
+    margin-bottom: 10px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    font-size: 30px;
+}
+
+.workspace-product-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.workspace-products button small {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.workspace-products button:hover,
+.workspace-category-rail button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .12);
+}
+
+.workspace-products button:active,
+.workspace-table:active,
+.workspace-category-rail button:active,
+.workspace-bottom-nav button:active {
+    transform: scale(.98);
 }
 
 .workspace-products button strong,
@@ -3619,7 +3713,8 @@ table tr:hover td,
     padding: 12px;
     border: 1px solid var(--border);
     border-radius: 18px;
-    background: linear-gradient(135deg, var(--primary-soft), var(--card));
+    background: linear-gradient(135deg, rgba(37, 99, 235, .16), color-mix(in srgb, var(--card) 84%, transparent));
+    backdrop-filter: blur(18px);
 }
 
 .workspace-payment-cta .primary-btn {
@@ -3629,6 +3724,8 @@ table tr:hover td,
     gap: 12px;
     min-height: 58px;
     font-size: 16px;
+    border-radius: 18px;
+    box-shadow: 0 18px 36px rgba(37, 99, 235, .24);
 }
 
 .workspace-payment-cta .primary-btn:disabled {
@@ -3643,6 +3740,14 @@ table tr:hover td,
 
 .workspace-order-actions--simple {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.workspace-order-summary__total {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    color: var(--primary);
+    font-size: 17px;
+    font-weight: 950;
 }
 
 .workspace-more-actions,
@@ -3668,17 +3773,64 @@ table tr:hover td,
     color: var(--text);
     font-weight: 900;
     font-size: 16px;
+    transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+}
+
+.workspace-pay-options button span {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 26px;
 }
 
 .workspace-pay-options button.is-active {
     background: var(--primary);
     border-color: var(--primary);
     color: #fff;
+    box-shadow: 0 18px 36px rgba(37, 99, 235, .24);
 }
 
 .workspace-pay-submit {
     min-height: 58px;
     font-size: 16px;
+}
+
+button.is-rippling::after {
+    content: "";
+    position: absolute;
+    left: var(--ripple-x, 50%);
+    top: var(--ripple-y, 50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .46);
+    transform: translate(-50%, -50%) scale(1);
+    animation: workspaceRipple .46s ease-out;
+    pointer-events: none;
+}
+
+@keyframes workspaceRipple {
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(18);
+    }
+}
+
+.workspace-layout--quick .workspace-unified__products,
+.workspace-layout--quick .workspace-unified__floor,
+.workspace-layout--quick .workspace-order-card,
+.workspace-modal__content {
+    animation: workspaceFadeUp .22s ease-out both;
+}
+
+@keyframes workspaceFadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(.99);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .workspace-list {
@@ -3691,6 +3843,11 @@ table tr:hover td,
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 12px;
     margin: 16px 0;
+}
+
+.workspace-report-grid .metric-card {
+    border-radius: 22px;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, .08);
 }
 
 .workspace-report-tables {
@@ -3837,6 +3994,15 @@ table tr:hover td,
         grid-template-columns: 1fr;
     }
 
+    .workspace-layout--quick {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+    }
+
+    .workspace-layout--quick .workspace-unified {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
     .workspace-order-card {
         position: static;
         max-height: none;
@@ -3844,8 +4010,12 @@ table tr:hover td,
 }
 
 @media (min-width: 1201px) and (max-width: 1440px) {
-    .workspace-layout {
+    .workspace-layout:not(.workspace-layout--quick) {
         grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+    }
+
+    .workspace-layout--quick {
+        grid-template-columns: minmax(330px, 1fr) minmax(260px, .74fr) minmax(340px, .86fr);
     }
 
     .workspace-floor-grid {
@@ -3880,6 +4050,15 @@ table tr:hover td,
         gap: 12px;
     }
 
+    .workspace-layout--quick {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-layout--quick .workspace-unified {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
     .workspace-category-rail {
         margin-right: -6px;
         padding-bottom: 8px;
@@ -3905,9 +4084,18 @@ table tr:hover td,
 
     .workspace-payment-cta {
         position: sticky;
-        bottom: 84px;
+        bottom: 0;
         z-index: 5;
         box-shadow: var(--shadow);
+    }
+
+    .workspace-order-card {
+        position: sticky;
+        bottom: 82px;
+        z-index: 12;
+        max-height: min(62dvh, 560px);
+        border-radius: 26px 26px 18px 18px;
+        box-shadow: 0 -18px 46px rgba(15, 23, 42, .18);
     }
 
     .workspace-payment-cta .primary-btn,
@@ -3951,6 +4139,20 @@ table tr:hover td,
     .workspace-report-tables,
     .workspace-menu-grid {
         grid-template-columns: 1fr;
+    }
+
+    .workspace-products {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .workspace-products button {
+        min-height: 116px;
+        padding: 12px;
+    }
+
+    .workspace-product-card__media {
+        height: 54px;
+        font-size: 24px;
     }
 
     .workspace-table {

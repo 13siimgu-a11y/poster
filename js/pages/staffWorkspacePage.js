@@ -125,6 +125,8 @@ function renderBottomButton(screen, icon, label) {
 }
 
 function bindRootActions(root) {
+    bindRipple(root);
+
     root.querySelectorAll("[data-work-screen]").forEach((button) => {
         button.addEventListener("click", () => {
             activeScreen = button.dataset.workScreen;
@@ -134,6 +136,20 @@ function bindRootActions(root) {
 
     root.querySelectorAll("[data-work-action]").forEach((button) => {
         button.addEventListener("click", () => handleWorkspaceAction(button.dataset.workAction));
+    });
+}
+
+function bindRipple(root = document) {
+    root.querySelectorAll("button").forEach((button) => {
+        if (button.dataset.rippleBound) return;
+        button.dataset.rippleBound = "true";
+        button.addEventListener("pointerdown", (event) => {
+            const rect = button.getBoundingClientRect();
+            button.style.setProperty("--ripple-x", `${event.clientX - rect.left}px`);
+            button.style.setProperty("--ripple-y", `${event.clientY - rect.top}px`);
+            button.classList.remove("is-rippling");
+            window.requestAnimationFrame(() => button.classList.add("is-rippling"));
+        });
     });
 }
 
@@ -158,8 +174,10 @@ function renderWorkspaceNotices() {
 
 function renderActiveScreen() {
     const layout = document.getElementById("workspaceLayout");
+    layout.className = "workspace-layout";
 
     if (activeScreen === STAFF_SCREENS.quick) {
+        layout.classList.add("workspace-layout--quick");
         layout.innerHTML = renderUnifiedWorkspace();
         bindUnifiedWorkspace();
         return;
@@ -199,11 +217,11 @@ function renderUnifiedWorkspace() {
 
     return `
         <section class="workspace-unified">
-            <div class="workspace-unified__products panel">
+            <div class="workspace-unified__products panel glass-panel">
                 <div class="workspace-section-head">
                     <div>
-                        <h3>Товары</h3>
-                        <p>Нажмите товар - он сразу попадет в текущий заказ.</p>
+                        <h3>Быстрая продажа</h3>
+                        <p>Поиск, категории и товары. Одно нажатие добавляет позицию.</p>
                     </div>
                     <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек</button>
                 </div>
@@ -229,7 +247,7 @@ function renderUnifiedWorkspace() {
                 ${renderQuickProducts(24)}
             </div>
 
-            <div class="workspace-unified__floor panel">
+            <div class="workspace-unified__floor panel glass-panel">
                 <div class="workspace-section-head">
                     <div>
                         <h3>Столы</h3>
@@ -249,7 +267,7 @@ function renderUnifiedWorkspace() {
                 </div>
             </div>
         </section>
-        <aside class="workspace-order-card panel" id="workspaceOrderPanel">
+        <aside class="workspace-order-card panel glass-panel" id="workspaceOrderPanel">
             ${renderActiveOrder()}
         </aside>
     `;
@@ -296,7 +314,7 @@ function renderTableMap(halls) {
 
     const visibleHalls = activeHallId === "all"
         ? halls
-        : halls.filter((hall) => Number(hall.id) === Number(activeHallId));
+        : halls.filter((hall) => idsEqual(hall.id, activeHallId));
     const tables = visibleHalls.flatMap((hall) => loadTables(currentCompany.id, hall.id).map((table) => ({
         ...table,
         hallName: hall.name,
@@ -317,12 +335,13 @@ function renderTableMap(halls) {
         const state = getTableState(table, order, reservation);
         return `
             <button class="workspace-table workspace-table--${state.tone} ${idsEqual(order?.id, activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}">
-                <span>${state.icon}</span>
+                <span class="workspace-table__status">${state.icon}</span>
                 <strong>${escapeHtml(table.name)}</strong>
                 <small>${escapeHtml(table.hallName)}</small>
-                <small>${escapeHtml(state.label)}</small>
                 <em>${order ? `${order.guests} гостей` : `${table.seats} мест`}</em>
-                ${order ? `<b>${escapeHtml(getOrderAge(order.createdAt))}</b>` : ""}
+                <small class="workspace-table__label">${escapeHtml(state.label)}</small>
+                ${order ? `<b>${formatMoney(order.total, currentCompany.settings.currency)}</b>` : "<b>Свободно</b>"}
+                ${order ? `<small>${escapeHtml(getOrderAge(order.createdAt))}</small>` : ""}
                 ${order?.waiterId ? `<i>${escapeHtml(getWaiterName(order.waiterId))}</i>` : ""}
             </button>
         `;
@@ -436,6 +455,7 @@ function renderActiveOrder() {
     }
 
     const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, order.tableId));
+    const finalTotal = Math.max(0, Number(order.total || 0));
     return `
         <div class="workspace-order-head">
             <div>
@@ -469,12 +489,13 @@ function renderActiveOrder() {
         <div class="workspace-order-summary">
             <span>Подытог</span><strong>${formatMoney(order.subtotal, currentCompany.settings.currency)}</strong>
             <span>Скидка</span><strong>${formatMoney(order.discount, currentCompany.settings.currency)}</strong>
-            <span>Итого</span><strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
+            <span>Обслуживание</span><strong>${formatMoney(order.tax || 0, currentCompany.settings.currency)}</strong>
+            <span class="workspace-order-summary__total">Финальная сумма</span><strong class="workspace-order-summary__total">${formatMoney(finalTotal, currentCompany.settings.currency)}</strong>
         </div>
         <div class="workspace-payment-cta">
             <button class="primary-btn" type="button" data-order-action="pay" ${order.items.length ? "" : "disabled"}>
                 Перейти к оплате
-                <strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
+                <strong>${formatMoney(finalTotal, currentCompany.settings.currency)}</strong>
             </button>
             <span>${order.items.length ? "Проверьте чек и выберите способ оплаты." : "Добавьте товары, чтобы перейти к оплате."}</span>
         </div>
@@ -489,17 +510,32 @@ function renderActiveOrder() {
 
 function renderQuickProducts(limit = 12) {
     const products = filterWorkspaceProducts().slice(0, limit);
+    const categories = loadCategories(currentCompany.id);
+    const categoryById = new Map(categories.map((category) => [String(category.id), category]));
     return `
         <div class="workspace-products">
             ${products.length ? products.map((product) => `
-                <button type="button" data-add-work-product="${product.id}">
+                <button class="workspace-product-card" type="button" data-add-work-product="${product.id}">
+                    <span class="workspace-product-card__media">${product.images?.[0] ? `<img src="${escapeHtml(product.images[0])}" alt="">` : getProductIcon(product, categoryById.get(String(product.categoryId)))}</span>
                     <strong>${escapeHtml(product.name)}</strong>
-                    <span>${escapeHtml(product.sku)}</span>
+                    <span>${escapeHtml(categoryById.get(String(product.categoryId))?.name || "Без категории")}</span>
+                    <small>${Number(product.quantity || 0) > 0 ? `В наличии: ${Number(product.quantity)}` : "Стоп-лист"}</small>
                     <b>${formatMoney(product.price, currentCompany.settings.currency)}</b>
                 </button>
             `).join("") : renderEmptyState("Товаров не найдено", "Попробуйте другой поиск или проверьте меню.", "")}
         </div>
     `;
+}
+
+function getProductIcon(product, category) {
+    const text = `${product.name} ${category?.name || ""}`.toLowerCase();
+    if (text.includes("cocktail") || text.includes("коктейл")) return "🍸";
+    if (text.includes("beer") || text.includes("пиво")) return "🍺";
+    if (text.includes("coffee") || text.includes("коф")) return "☕";
+    if (text.includes("wine") || text.includes("champagne")) return "🍷";
+    if (text.includes("burger") || text.includes("pizza")) return "🍔";
+    if (text.includes("salad") || text.includes("салат")) return "🥗";
+    return category?.icon || "🍽";
 }
 
 function filterWorkspaceProducts() {
@@ -830,9 +866,9 @@ function openPaymentModal(order) {
                 <strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
             </div>
             <div class="workspace-pay-options">
-                <button class="is-active" type="button" data-pay-choice="cash">Наличные</button>
-                <button type="button" data-pay-choice="card">Карта</button>
-                <button type="button" data-pay-choice="mixed">Смешанная</button>
+                <button class="is-active" type="button" data-pay-choice="cash"><span>💵</span>Наличные</button>
+                <button type="button" data-pay-choice="card"><span>💳</span>Карта</button>
+                <button type="button" data-pay-choice="mixed"><span>🔀</span>Смешанная</button>
             </div>
             <input name="type" type="hidden" value="cash">
             <div class="workspace-payment-fields" data-payment-fields>
@@ -842,6 +878,7 @@ function openPaymentModal(order) {
             <button class="primary-btn workspace-pay-submit" type="submit">Оплатить и закрыть</button>
         </form>
     `);
+    bindRipple(document.getElementById("workspaceModal"));
 
     document.querySelectorAll("[data-pay-choice]").forEach((button) => {
         button.addEventListener("click", () => {
