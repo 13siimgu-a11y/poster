@@ -3612,6 +3612,75 @@ table tr:hover td,
     gap: 10px;
 }
 
+.workspace-payment-cta {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--primary-soft), var(--card));
+}
+
+.workspace-payment-cta .primary-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 58px;
+    font-size: 16px;
+}
+
+.workspace-payment-cta .primary-btn:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+.workspace-payment-cta span {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.workspace-order-actions--simple {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.workspace-more-actions,
+.workspace-pay-options,
+.workspace-payment-fields {
+    display: grid;
+    gap: 10px;
+}
+
+.workspace-more-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-pay-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workspace-pay-options button {
+    min-height: 72px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--card);
+    color: var(--text);
+    font-weight: 900;
+    font-size: 16px;
+}
+
+.workspace-pay-options button.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.workspace-pay-submit {
+    min-height: 58px;
+    font-size: 16px;
+}
+
 .workspace-list {
     display: grid;
     gap: 6px;
@@ -3826,6 +3895,25 @@ table tr:hover td,
     .workspace-inventory-row,
     .workspace-detail-row {
         grid-template-columns: 1fr;
+    }
+
+    .workspace-order-actions--simple,
+    .workspace-more-actions,
+    .workspace-pay-options {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-payment-cta {
+        position: sticky;
+        bottom: 84px;
+        z-index: 5;
+        box-shadow: var(--shadow);
+    }
+
+    .workspace-payment-cta .primary-btn,
+    .workspace-pay-submit,
+    .workspace-pay-options button {
+        min-height: 64px;
     }
 
     .workspace-bottom-nav {

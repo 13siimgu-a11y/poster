@@ -471,17 +471,18 @@ function renderActiveOrder() {
             <span>Скидка</span><strong>${formatMoney(order.discount, currentCompany.settings.currency)}</strong>
             <span>Итого</span><strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
         </div>
-        <div class="workspace-order-actions">
-            <button class="secondary-btn" type="button" data-order-action="client">Клиент</button>
-            ${canShowAction(currentUser, "discounts:manage") ? '<button class="secondary-btn" type="button" data-order-action="discount">Скидка</button>' : ""}
-            <button class="secondary-btn" type="button" data-order-action="transfer">Перенос</button>
-            <button class="secondary-btn" type="button" data-order-action="merge">Объединить</button>
-            <button class="secondary-btn" type="button" data-order-action="split">Разделить</button>
-            <button class="secondary-btn" type="button" data-order-action="kitchen">Кухня</button>
+        <div class="workspace-payment-cta">
+            <button class="primary-btn" type="button" data-order-action="pay" ${order.items.length ? "" : "disabled"}>
+                Перейти к оплате
+                <strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
+            </button>
+            <span>${order.items.length ? "Проверьте чек и выберите способ оплаты." : "Добавьте товары, чтобы перейти к оплате."}</span>
+        </div>
+        <div class="workspace-order-actions workspace-order-actions--simple">
+            <button class="secondary-btn" type="button" data-order-action="kitchen">На кухню</button>
             <button class="secondary-btn" type="button" data-order-action="print">Печать</button>
-            <button class="secondary-btn" type="button" data-order-action="close">Закрыть</button>
-            <button class="secondary-btn danger-btn" type="button" data-order-action="cancel">Отменить</button>
-            <button class="primary-btn" type="button" data-order-action="pay">Оплатить</button>
+            ${canShowAction(currentUser, "discounts:manage") ? '<button class="secondary-btn" type="button" data-order-action="discount">Скидка</button>' : ""}
+            <button class="secondary-btn" type="button" data-order-action="more">Ещё</button>
         </div>
     `;
 }
@@ -794,7 +795,29 @@ function handleOrderAction(action) {
         confirmCloseOrder(order);
     } else if (action === "cancel") {
         confirmCancelOrder(order);
+    } else if (action === "more") {
+        openMoreOrderActions(order);
     }
+}
+
+function openMoreOrderActions(order) {
+    openWorkspaceModal("Дополнительно", `
+        <div class="workspace-more-actions">
+            <button class="secondary-btn" type="button" data-more-order-action="client">Клиент</button>
+            <button class="secondary-btn" type="button" data-more-order-action="transfer">Перенести стол</button>
+            <button class="secondary-btn" type="button" data-more-order-action="split">Разделить чек</button>
+            <button class="secondary-btn" type="button" data-more-order-action="merge">Объединить</button>
+            <button class="secondary-btn" type="button" data-more-order-action="close">Закрыть без оплаты</button>
+            <button class="secondary-btn danger-btn" type="button" data-more-order-action="cancel">Отменить заказ</button>
+        </div>
+    `);
+
+    document.querySelectorAll("[data-more-order-action]").forEach((button) => {
+        button.addEventListener("click", () => {
+            closeWorkspaceModal();
+            handleOrderAction(button.dataset.moreOrderAction);
+        });
+    });
 }
 
 function openPaymentModal(order) {
@@ -806,18 +829,37 @@ function openPaymentModal(order) {
                 <span>Итого</span>
                 <strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
             </div>
-            <label>Тип оплаты
-                <select name="type">
-                    <option value="cash">Наличные</option>
-                    <option value="card">Безналичные</option>
-                    <option value="mixed">Смешанная</option>
-                </select>
-            </label>
-            <label>Наличные<input name="cash" type="number" min="0" step="0.01" value="${order.total}"></label>
-            <label>Безналичные<input name="card" type="number" min="0" step="0.01" value="0"></label>
-            <button class="primary-btn" type="submit">Закрыть и оплатить</button>
+            <div class="workspace-pay-options">
+                <button class="is-active" type="button" data-pay-choice="cash">Наличные</button>
+                <button type="button" data-pay-choice="card">Карта</button>
+                <button type="button" data-pay-choice="mixed">Смешанная</button>
+            </div>
+            <input name="type" type="hidden" value="cash">
+            <div class="workspace-payment-fields" data-payment-fields>
+                <label>Наличные<input name="cash" type="number" min="0" step="0.01" value="${order.total}" inputmode="decimal"></label>
+                <label hidden>Карта<input name="card" type="number" min="0" step="0.01" value="0" inputmode="decimal"></label>
+            </div>
+            <button class="primary-btn workspace-pay-submit" type="submit">Оплатить и закрыть</button>
         </form>
     `);
+
+    document.querySelectorAll("[data-pay-choice]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const type = button.dataset.payChoice;
+            document.querySelectorAll("[data-pay-choice]").forEach((item) => item.classList.toggle("is-active", item === button));
+            document.querySelector("#orderPaymentForm [name='type']").value = type;
+            const cashField = document.querySelector("#orderPaymentForm [name='cash']").closest("label");
+            const cardField = document.querySelector("#orderPaymentForm [name='card']").closest("label");
+            cashField.hidden = type === "card";
+            cardField.hidden = type === "cash";
+            document.querySelector("#orderPaymentForm [name='cash']").value = type === "card" ? 0 : order.total;
+            document.querySelector("#orderPaymentForm [name='card']").value = type === "cash" ? 0 : order.total;
+            if (type === "mixed") {
+                document.querySelector("#orderPaymentForm [name='cash']").value = order.total;
+                document.querySelector("#orderPaymentForm [name='card']").value = 0;
+            }
+        });
+    });
 
     document.getElementById("orderPaymentForm").addEventListener("submit", (event) => {
         event.preventDefault();
