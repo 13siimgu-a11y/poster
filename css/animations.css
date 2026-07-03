@@ -1,0 +1,117 @@
+.preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: grid;
+    place-items: center;
+    background: var(--ds-bg);
+    transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+.preloader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.preloader__orb {
+    width: 72px;
+    height: 72px;
+    border: 5px solid var(--ds-primary-soft);
+    border-top-color: var(--ds-primary);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+.preloader p {
+    position: absolute;
+    margin-top: 120px;
+    color: var(--ds-primary);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.reveal {
+    opacity: 0;
+    transform: translateY(34px);
+    transition: opacity 0.75s ease, transform 0.75s ease;
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hero__visual .terminal-card {
+    animation: floatTerminal 5.5s ease-in-out infinite;
+}
+
+.btn--primary {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn--primary::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+    content: "";
+    transform: translateX(-130%);
+}
+
+.btn--primary:hover::after {
+    animation: buttonShine 0.72s ease;
+}
+
+.feature-card,
+.module-card,
+.audience-card,
+.step-card {
+    will-change: transform;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes floatTerminal {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-14px);
+    }
+}
+
+@keyframes floatCard {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes buttonShine {
+    to {
+        transform: translateX(130%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

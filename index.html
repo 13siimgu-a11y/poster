@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="POS Poster - современная POS-система для ресторанов, кафе, баров и других заведений общественного питания.">
+    <title>POS Poster - современная POS-система</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/adaptive.css">
+</head>
+<body>
+    <div class="preloader" id="preloader" aria-label="Загрузка страницы">
+        <div class="preloader__orb"></div>
+        <p>POS Poster</p>
+    </div>
+
+    <header class="header" id="header">
+        <div class="container header__inner">
+            <a class="logo" href="#hero" aria-label="POS Poster">
+                <span class="logo__mark">P</span>
+                <span>POS Poster</span>
+            </a>
+
+            <nav class="nav" id="nav" aria-label="Основная навигация">
+                <a href="#about-system">О системе</a>
+                <a href="#features">Возможности</a>
+                <a href="#audience">Для кого</a>
+                <a href="#pricing">Цены</a>
+                <a href="#company">О компании</a>
+            </nav>
+
+            <div class="header__actions" id="headerActions">
+                <button class="btn btn--ghost" type="button" data-open-modal="loginModal">Войти</button>
+                <button class="btn btn--primary" type="button" data-open-modal="registerModal">Регистрация</button>
+            </div>
+
+            <button class="burger" id="burger" type="button" aria-label="Открыть меню" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero section" id="hero">
+            <div class="container hero__grid">
+                <div class="hero__content reveal">
+                    <span class="eyebrow">Автоматизация ресторанного бизнеса</span>
+                    <h1>Современная POS-система для ресторанов, кафе и баров</h1>
+                    <p>Автоматизируйте продажи, складской учет, персонал, финансы и аналитику в одном месте.</p>
+                    <div class="hero__actions">
+                        <button class="btn btn--primary btn--large" type="button" data-open-modal="registerModal">Попробовать бесплатно</button>
+                        <a class="btn btn--secondary btn--large" href="#features">Узнать больше</a>
+                    </div>
+                </div>
+
+                <div class="hero__visual reveal">
+                    <div class="terminal-card">
+                        <div class="terminal-card__top">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="terminal-card__screen">
+                            <div class="order-panel">
+                                <div>
+                                    <strong>Заказ #1842</strong>
+                                    <small>Стол 8 • официант Алина</small>
+                                </div>
+                                <span class="status-pill">Готовится</span>
+                            </div>
+                            <div class="product-row">
+                                <span>Латте</span>
+                                <strong>2 x 4.50</strong>
+                            </div>
+                            <div class="product-row">
+                                <span>Паста с лососем</span>
+                                <strong>1 x 16.00</strong>
+                            </div>
+                            <div class="product-row">
+                                <span>Чизкейк</span>
+                                <strong>1 x 7.00</strong>
+                            </div>
+                            <div class="terminal-card__total">
+                                <span>Итого</span>
+                                <strong>$32.00</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="about-system">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <span class="eyebrow">Почему выбирают нас</span>
+                    <h2>Все для стабильной работы заведения</h2>
+                    <p>POS Poster объединяет кассу, склад, кухню, персонал и аналитику в одном понятном интерфейсе.</p>
+                </div>
+
+                <div class="benefits-grid">
+                    <article class="feature-card reveal">
+                        <span class="card-icon">⚡</span>
+                        <h3>Быстрая работа</h3>
+                        <p>Мгновенное создание заказов и оплата без задержек даже в часы пик.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="card-icon">☁</span>
+                        <h3>Облачная синхронизация</h3>
+                        <p>Данные обновляются между кассами, складом и кабинетами руководителей.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="card-icon">📊</span>
+                        <h3>Аналитика</h3>
+                        <p>Отчеты по продажам, прибыли, среднему чеку и эффективности команды.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="card-icon">💳</span>
+                        <h3>Работа с оплатами</h3>
+                        <p>Наличные, карты, разделение счета и быстрые возвраты в одном сценарии.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="card-icon">👥</span>
+                        <h3>Управление персоналом</h3>
+                        <p>Роли, доступы, смены и прозрачная история действий сотрудников.</p>
+                    </article>
+                    <article class="feature-card reveal">
+                        <span class="card-icon">📦</span>
+                        <h3>Складской учет</h3>
+                        <p>Остатки, списания, инвентаризация и контроль себестоимости блюд.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section--soft" id="features">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <span class="eyebrow">Возможности</span>
+                    <h2>Инструменты для ежедневной операционной работы</h2>
+                    <p>Система закрывает ключевые процессы заведения от первого заказа до финансовой аналитики.</p>
+                </div>
+
+                <div class="modules-grid">
+                    <article class="module-card reveal">
+                        <h3>Продажи</h3>
+                        <ul>
+                            <li>Быстрое оформление заказа</li>
+                            <li>Работа с несколькими кассами</li>
+                            <li>История чеков</li>
+                        </ul>
+                    </article>
+                    <article class="module-card reveal">
+                        <h3>Склад</h3>
+                        <ul>
+                            <li>Остатки</li>
+                            <li>Автоматическое списание</li>
+                            <li>Инвентаризация</li>
+                        </ul>
+                    </article>
+                    <article class="module-card reveal">
+                        <h3>Персонал</h3>
+                        <ul>
+                            <li>Роли</li>
+                            <li>Доступы</li>
+                            <li>Смена сотрудников</li>
+                        </ul>
+                    </article>
+                    <article class="module-card reveal">
+                        <h3>Кухня</h3>
+                        <ul>
+                            <li>Экран кухни</li>
+                            <li>Очередь заказов</li>
+                            <li>Статусы приготовления</li>
+                        </ul>
+                    </article>
+                    <article class="module-card reveal">
+                        <h3>Финансы</h3>
+                        <ul>
+                            <li>Доходы</li>
+                            <li>Расходы</li>
+                            <li>Прибыль</li>
+                        </ul>
+                    </article>
+                    <article class="module-card reveal">
+                        <h3>CRM</h3>
+                        <ul>
+                            <li>Клиенты</li>
+                            <li>Бонусы и скидки</li>
+                            <li>История заказов</li>
+                        </ul>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="audience">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <span class="eyebrow">Для кого</span>
+                    <h2>Подходит для разных форматов HoReCa</h2>
+                </div>
+
+                <div class="audience-grid">
+                    <article class="audience-card reveal"><span>🍔</span><h3>Рестораны</h3></article>
+                    <article class="audience-card reveal"><span>☕</span><h3>Кофейни</h3></article>
+                    <article class="audience-card reveal"><span>🍺</span><h3>Бары</h3></article>
+                    <article class="audience-card reveal"><span>🍕</span><h3>Пиццерии</h3></article>
+                    <article class="audience-card reveal"><span>🍣</span><h3>Суши</h3></article>
+                    <article class="audience-card reveal"><span>🍰</span><h3>Кондитерские</h3></article>
+                    <article class="audience-card reveal"><span>🥩</span><h3>Стейкхаусы</h3></article>
+                    <article class="audience-card reveal"><span>🍸</span><h3>Кальянные</h3></article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section--soft">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <span class="eyebrow">Как работает система</span>
+                    <h2>Запуск без сложной интеграции</h2>
+                </div>
+
+                <div class="steps reveal">
+                    <article class="step-card">
+                        <span>1</span>
+                        <h3>Регистрация</h3>
+                    </article>
+                    <article class="step-card">
+                        <span>2</span>
+                        <h3>Настройка заведения</h3>
+                    </article>
+                    <article class="step-card">
+                        <span>3</span>
+                        <h3>Начало продаж</h3>
+                    </article>
+                    <article class="step-card">
+                        <span>4</span>
+                        <h3>Получение аналитики</h3>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section stats-section">
+            <div class="container stats-grid reveal">
+                <article class="big-stat">
+                    <strong data-counter="5000">0</strong><span>+</span>
+                    <p>клиентов</p>
+                </article>
+                <article class="big-stat">
+                    <strong data-counter="99.9">0</strong><span>%</span>
+                    <p>аптайм</p>
+                </article>
+                <article class="big-stat">
+                    <strong data-static="24/7">24/7</strong>
+                    <p>поддержка</p>
+                </article>
+                <article class="big-stat">
+                    <strong data-counter="100">0</strong><span>+</span>
+                    <p>отчетов</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section--soft">
+            <div class="container">
+                <div class="section-heading reveal">
+                    <span class="eyebrow">Отзывы</span>
+                    <h2>Что говорят владельцы заведений</h2>
+                </div>
+
+                <div class="testimonials reveal">
+                    <div class="testimonial-track" id="testimonialTrack">
+                        <article class="testimonial-card">
+                            <div class="avatar">АМ</div>
+                            <h3>Алексей Морозов</h3>
+                            <span>Владелец кофейни</span>
+                            <p>POS Poster помог нам быстрее обслуживать гостей и видеть реальные остатки по складу каждый день.</p>
+                        </article>
+                        <article class="testimonial-card">
+                            <div class="avatar">ЕН</div>
+                            <h3>Екатерина Нурова</h3>
+                            <span>Операционный директор</span>
+                            <p>Отчеты стали понятнее, смены прозрачнее, а кухня перестала терять заказы в пиковые часы.</p>
+                        </article>
+                        <article class="testimonial-card">
+                            <div class="avatar">ДС</div>
+                            <h3>Дамир Садыков</h3>
+                            <span>Управляющий бара</span>
+                            <p>Система выглядит современно, работает стабильно и не требует долгого обучения персонала.</p>
+                        </article>
+                    </div>
+                    <div class="slider-controls" id="sliderControls" aria-label="Переключение отзывов">
+                        <button type="button" aria-label="Отзыв 1" class="is-active"></button>
+                        <button type="button" aria-label="Отзыв 2"></button>
+                        <button type="button" aria-label="Отзыв 3"></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" id="company">
+            <div class="container company-card reveal">
+                <div>
+                    <span class="eyebrow">О компании</span>
+                    <h2>Мы создаем современные решения для автоматизации ресторанного бизнеса</h2>
+                    <p>Наша команда разрабатывает продукты, которые помогают владельцам заведений видеть бизнес целиком: продажи, склад, персонал, финансы и клиентский опыт.</p>
+                </div>
+                <div class="mission">
+                    <h3>Миссия</h3>
+                    <p>Сделать управление заведением простым, прозрачным и технологичным, чтобы команды больше времени уделяли гостям, а не рутине.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section pricing-section" id="pricing">
+            <div class="container pricing-card reveal">
+                <span class="eyebrow">Цены</span>
+                <h2>Тарифы скоро появятся</h2>
+                <p>Мы готовим гибкие планы для одиночных заведений, сетей и франшиз.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer__grid">
+            <div>
+                <a class="logo footer__logo" href="#hero">
+                    <span class="logo__mark">P</span>
+                    <span>POS Poster</span>
+                </a>
+                <p>Современная POS-система для кафе, ресторанов и баров.</p>
+            </div>
+            <div>
+                <h3>Компания</h3>
+                <a href="#company">О нас</a>
+                <a href="#">Новости</a>
+                <a href="#">Карьера</a>
+            </div>
+            <div>
+                <h3>Продукт</h3>
+                <a href="#features">Возможности</a>
+                <a href="#pricing">Цены</a>
+                <a href="#">Поддержка</a>
+            </div>
+            <div>
+                <h3>Контакты</h3>
+                <a href="tel:+70000000000">+7 000 000-00-00</a>
+                <a href="mailto:hello@posposter.local">hello@posposter.local</a>
+                <span>г. Алматы, бизнес-центр Matrix</span>
+                <div class="socials">
+                    <a href="#" aria-label="Instagram">In</a>
+                    <a href="#" aria-label="Telegram">Tg</a>
+                    <a href="#" aria-label="Facebook">Fb</a>
+                </div>
+            </div>
+        </div>
+        <div class="container footer__bottom">
+            <p>© 2026 POS Poster. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <div class="modal" id="registerModal" aria-hidden="true">
+        <div class="modal__overlay" data-close-modal></div>
+        <div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+            <button class="modal__close" type="button" aria-label="Закрыть окно" data-close-modal>×</button>
+            <h2 id="registerTitle">Создать аккаунт</h2>
+            <p>Зарегистрируйтесь, чтобы начать настройку POS Poster.</p>
+            <form id="registerForm" class="form">
+                <label>Username<input type="text" name="username" autocomplete="username" required minlength="2"></label>
+                <label>Email<input type="email" name="email" autocomplete="email" required></label>
+                <label>Password<input type="password" name="password" autocomplete="new-password" required minlength="6"></label>
+                <label>Repeat password<input type="password" name="repeatPassword" autocomplete="new-password" required minlength="6"></label>
+                <button class="btn btn--primary btn--full" type="submit">Создать аккаунт</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="loginModal" aria-hidden="true">
+        <div class="modal__overlay" data-close-modal></div>
+        <div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+            <button class="modal__close" type="button" aria-label="Закрыть окно" data-close-modal>×</button>
+            <h2 id="loginTitle">Войти</h2>
+            <p>Введите логин и пароль, чтобы открыть рабочее место вашего заведения.</p>
+            <form id="loginForm" class="form">
+                <label>Username<input type="text" name="username" autocomplete="username" required></label>
+                <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+                <button class="btn btn--primary btn--full" type="submit">Войти</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="notification" id="notification" role="status" aria-live="polite"></div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

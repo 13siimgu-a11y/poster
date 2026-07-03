@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - POS Poster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <aside class="admin-sidebar">
+        <a class="admin-logo" href="index.html">
+            <span>P</span>
+            <strong>POS Poster</strong>
+        </a>
+        <nav class="admin-nav" aria-label="Административное меню">
+            <button class="is-active" type="button" data-section="dashboard">Dashboard</button>
+            <button type="button" data-section="users">Пользователи</button>
+            <button type="button" data-section="subscriptions">Подписки</button>
+            <button type="button" data-section="plans">Тарифы</button>
+            <button type="button" data-section="statistics">Статистика</button>
+            <button type="button" data-section="logs">Логи</button>
+            <button type="button" data-section="settings">Настройки</button>
+        </nav>
+        <button class="admin-logout" id="logoutButton" type="button">Выйти</button>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-header">
+            <div>
+                <p>Super Admin</p>
+                <h1 id="sectionTitle">Dashboard</h1>
+            </div>
+            <a class="admin-link" href="index.html">На сайт</a>
+        </header>
+
+        <section class="admin-section is-active" id="dashboardSection">
+            <div class="metric-grid" id="metricGrid"></div>
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Последние действия</h2>
+                </div>
+                <div id="recentLogs"></div>
+            </div>
+        </section>
+
+        <section class="admin-section" id="usersSection">
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Пользователи</h2>
+                    <span id="usersCount"></span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Дата регистрации</th>
+                                <th>Роль</th>
+                                <th>Статус</th>
+                                <th>Тариф</th>
+                                <th>Окончание</th>
+                                <th>Последний вход</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section" id="subscriptionsSection">
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Подписки</h2>
+                    <p>Выдавайте тарифы, Trial, Lifetime, продлевайте или отключайте подписки.</p>
+                </div>
+                <div class="subscription-grid" id="subscriptionsGrid"></div>
+            </div>
+        </section>
+
+        <section class="admin-section" id="plansSection">
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Тарифы</h2>
+                    <p>Создание, редактирование, удаление, цена, срок и описание.</p>
+                </div>
+                <form class="admin-form" id="planForm">
+                    <input name="name" type="text" placeholder="Название" required>
+                    <input name="price" type="number" placeholder="Цена $" min="0" required>
+                    <input name="days" type="number" placeholder="Количество дней" min="1" required>
+                    <input name="description" type="text" placeholder="Описание" required>
+                    <button type="submit">Создать тариф</button>
+                </form>
+                <div class="plans-grid" id="plansGrid"></div>
+            </div>
+        </section>
+
+        <section class="admin-section" id="statisticsSection">
+            <div class="metric-grid" id="statisticsMetrics"></div>
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Графики</h2>
+                    <p>Пока отображаются локальные данные из LocalStorage.</p>
+                </div>
+                <div class="chart-grid" id="chartsGrid"></div>
+            </div>
+        </section>
+
+        <section class="admin-section" id="logsSection">
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Логи действий</h2>
+                    <span id="logsCount"></span>
+                </div>
+                <div id="logsList" class="logs-list"></div>
+            </div>
+        </section>
+
+        <section class="admin-section" id="settingsSection">
+            <div class="panel">
+                <div class="panel-heading">
+                    <h2>Настройки</h2>
+                    <p>Проект, логотип, тема, контакты и базовые параметры.</p>
+                </div>
+                <form class="settings-form" id="settingsForm">
+                    <label>Название проекта<input name="projectName" type="text" value="POS Poster"></label>
+                    <label>Логотип<input name="logo" type="text" value="P"></label>
+                    <label>Цветовая тема<input name="themeColor" type="color" value="#3B82F6"></label>
+                    <label>Телефон<input name="phone" type="text" value="+7 000 000-00-00"></label>
+                    <label>Email<input name="email" type="email" value="hello@posposter.local"></label>
+                    <button type="submit">Сохранить настройки</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <div class="admin-modal" id="subscriptionModal" aria-hidden="true">
+        <div class="admin-modal__overlay" data-close-subscription-modal></div>
+        <div class="admin-modal__content" role="dialog" aria-modal="true">
+            <button class="admin-modal__close" type="button" data-close-subscription-modal>×</button>
+            <h2>Выдать подписку</h2>
+            <p id="subscriptionUserName"></p>
+            <form id="subscriptionForm" class="settings-form">
+                <input type="hidden" name="userId">
+                <label>Тариф
+                    <select name="plan" required>
+                        <option value="Starter">Starter</option>
+                        <option value="Business">Business</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Enterprise">Enterprise</option>
+                        <option value="trial">Trial</option>
+                        <option value="lifetime">Бессрочная</option>
+                    </select>
+                </label>
+                <button type="submit">Назначить</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-modal" id="editorModal" aria-hidden="true">
+        <div class="admin-modal__overlay" data-close-editor-modal></div>
+        <div class="admin-modal__content" role="dialog" aria-modal="true">
+            <button class="admin-modal__close" type="button" data-close-editor-modal>×</button>
+            <h2 id="editorModalTitle">Редактирование</h2>
+            <div id="editorModalBody"></div>
+        </div>
+    </div>
+
+    <div class="admin-toast" id="adminToast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

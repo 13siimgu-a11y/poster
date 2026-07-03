@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рабочее место - POS Poster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/workspace.css">
+</head>
+<body>
+    <main class="workspace-page">
+        <header class="workspace-page-head">
+            <a class="workspace-brand" href="workspace.html" aria-label="POS Poster">
+                <span>P</span>
+                <div>
+                    <strong id="workspaceCompanyName">POS Poster</strong>
+                    <small id="workspaceUserRole">Рабочее место</small>
+                </div>
+            </a>
+            <div class="workspace-page-actions">
+                <a class="secondary-btn" id="dashboardLink" href="dashboard.html" hidden>Dashboard</a>
+                <button class="secondary-btn" id="openAIButton" type="button">AI Assistant</button>
+                <button class="secondary-btn" id="themeToggle" type="button">Темная тема</button>
+                <button class="primary-btn" id="logoutButton" type="button">Выйти</button>
+            </div>
+        </header>
+
+        <section class="dash-view is-active" id="workspaceView">
+            <div class="staff-workspace" id="staffWorkspace"></div>
+        </section>
+    </main>
+
+    <div class="dash-toast" id="dashToast" role="status" aria-live="polite"></div>
+
+    <div class="workspace-modal" id="workspaceModal" hidden>
+        <div class="workspace-modal__overlay" data-close-workspace-modal></div>
+        <div class="workspace-modal__content">
+            <button class="workspace-modal__close" type="button" data-close-workspace-modal>×</button>
+            <h2 id="workspaceModalTitle">Рабочее место</h2>
+            <div id="workspaceModalBody"></div>
+        </div>
+    </div>
+
+    <button class="ai-floating-button" id="aiFloatingButton" type="button">🤖</button>
+
+    <aside class="ai-assistant-panel" id="aiAssistantPanel" hidden>
+        <div class="ai-panel-head">
+            <div>
+                <strong>AI Assistant</strong>
+                <span id="aiContextLabel">Контекст</span>
+            </div>
+            <button type="button" data-close-ai>×</button>
+        </div>
+        <input class="ai-history-search" id="aiHistorySearch" type="search" placeholder="Поиск по истории">
+        <div class="ai-quick-actions" id="aiQuickActions"></div>
+        <div class="ai-messages" id="aiMessages"></div>
+        <form class="ai-chat-form" id="aiChatForm">
+            <input id="aiMessageInput" type="text" placeholder="Напишите команду или вопрос">
+            <button class="primary-btn" type="submit">Отправить</button>
+        </form>
+    </aside>
+
+    <script type="module" src="js/workspace.js"></script>
+</body>
+</html>

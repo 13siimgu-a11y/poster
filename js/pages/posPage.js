@@ -1,0 +1,411 @@
+import { loadCategories } from "../categories.js";
+import { formatMoney } from "../currency.js";
+import {
+    addProductToReceipt,
+    applyDiscount,
+    applySurcharge,
+    calculateReceipt,
+    createReceipt,
+    getAvailablePosProducts,
+    holdReceipt,
+    loadCashRegisters,
+    loadReceipts,
+    payReceipt,
+    printReceiptHtml,
+    refundReceipt,
+    removeReceiptItem,
+    reopenReceipt,
+    updateReceiptItem,
+} from "../pos.js";
+import { loadProducts } from "../products.js";
+
+let currentCompany = null;
+let currentUser = null;
+let activePosCategoryId = "";
+let activeReceipt = null;
+let helpers = {};
+let isBound = false;
+
+export function initPosPage(context) {
+    currentCompany = context.company;
+    currentUser = context.user;
+    helpers = {
+        showToast: context.showToast,
+        formatDate: context.formatDate,
+        escapeHtml: context.escapeHtml,
+    };
+
+    bindPosEvents();
+    initPos();
+}
+
+function bindPosEvents() {
+    if (isBound) {
+        return;
+    }
+
+    document.getElementById("newReceiptButton").addEventListener("click", createNewPosReceipt);
+    document.getElementById("posRegisterSelect").addEventListener("change", createNewPosReceipt);
+    document.getElementById("posSearch").addEventListener("input", renderPosProducts);
+    document.getElementById("holdReceiptButton").addEventListener("click", holdActiveReceipt);
+    document.getElementById("showHeldReceiptsButton").addEventListener("click", () => showReceiptList("held"));
+    document.getElementById("showReceiptHistoryButton").addEventListener("click", () => showReceiptList("paid"));
+    document.getElementById("printReceiptButton").addEventListener("click", printActiveReceipt);
+    document.getElementById("receiptDiscount").addEventListener("change", updateReceiptAdjustments);
+    document.getElementById("receiptSurcharge").addEventListener("change", updateReceiptAdjustments);
+    document.querySelectorAll("[data-pay-type]").forEach((button) => {
+        button.addEventListener("click", () => payActiveReceipt(button.dataset.payType));
+    });
+    document.querySelectorAll("[data-close-pos-modal]").forEach((item) => {
+        item.addEventListener("click", closePosModal);
+    });
+
+    isBound = true;
+}
+
+function initPos() {
+    const registers = loadCashRegisters(currentCompany.id);
+    const registerSelect = document.getElementById("posRegisterSelect");
+    const cashierSelect = document.getElementById("posCashierSelect");
+    const openReceipts = loadReceipts(currentCompany.id, "open");
+
+    registerSelect.innerHTML = registers.map((register) => (
+        `<option value="${register.id}">${helpers.escapeHtml(register.name)}</option>`
+    )).join("");
+    cashierSelect.innerHTML = `<option value="${currentUser.id}">${helpers.escapeHtml(currentUser.username)}</option>`;
+    activeReceipt = openReceipts[0] || createReceipt(currentCompany.id, registers[0].id, currentUser.id);
+    renderPos();
+}
+
+function createNewPosReceipt() {
+    activeReceipt = createReceipt(
+        currentCompany.id,
+        document.getElementById("posRegisterSelect").value,
+        currentUser.id,
+    );
+    renderPos();
+}
+
+function renderPos() {
+    renderReceiptTabs();
+    renderPosCategories();
+    renderPosProducts();
+    renderActiveReceipt();
+}
+
+function renderReceiptTabs() {
+    const receipts = loadReceipts(currentCompany.id).filter((receipt) => ["open", "held"].includes(receipt.status));
+    document.getElementById("receiptTabs").innerHTML = receipts.map((receipt) => `
+        <button class="${Number(activeReceipt?.id) === Number(receipt.id) ? "is-active" : ""}" type="button" data-receipt-id="${receipt.id}">
+            ${receipt.number} ${receipt.status === "held" ? "• отложен" : ""}
+        </button>
+    `).join("");
+
+    document.querySelectorAll("[data-receipt-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+            activeReceipt = loadReceipts(currentCompany.id).find((receipt) => Number(receipt.id) === Number(button.dataset.receiptId));
+            if (activeReceipt?.status === "held") {
+                activeReceipt = reopenReceipt(activeReceipt);
+            }
+            renderPos();
+        });
+    });
+}
+
+function renderPosCategories() {
+    const categories = loadCategories(currentCompany.id).filter((category) => category.active);
+    document.getElementById("posCategories").innerHTML = `
+        <button class="${activePosCategoryId === "" ? "is-active" : ""}" type="button" data-pos-category="">Все</button>
+        ${categories.map((category) => `
+            <button class="${Number(activePosCategoryId) === Number(category.id) ? "is-active" : ""}" type="button" data-pos-category="${category.id}">
+                <span style="background:${category.color}">${helpers.escapeHtml(category.icon)}</span>${helpers.escapeHtml(category.name)}
+            </button>
+        `).join("")}
+    `;
+
+    document.querySelectorAll("[data-pos-category]").forEach((button) => {
+        button.addEventListener("click", () => {
+            activePosCategoryId = button.dataset.posCategory;
+            renderPosCategories();
+            renderPosProducts();
+        });
+    });
+}
+
+function renderPosProducts() {
+    const query = document.getElementById("posSearch").value.trim().toLowerCase();
+    const products = getAvailablePosProducts(currentCompany.id).filter((product) => {
+        const matchesCategory = !activePosCategoryId || Number(product.categoryId) === Number(activePosCategoryId);
+        const matchesQuery = !query || product.name.toLowerCase().includes(query) || product.sku.toLowerCase().includes(query);
+        return matchesCategory && matchesQuery;
+    });
+
+    document.getElementById("posProducts").innerHTML = products.length ? products.map((product) => `
+        <button class="pos-product-card" type="button" data-pos-product-id="${product.id}">
+            <span>${product.images?.[0] ? `<img src="${product.images[0]}" alt="">` : "🍽"}</span>
+            <strong>${helpers.escapeHtml(product.name)}</strong>
+            <small>${helpers.escapeHtml(product.sku)}</small>
+            <b>${formatMoney(product.price, currentCompany.settings.currency)}</b>
+        </button>
+    `).join("") : `
+        <div class="empty-state">
+            <h3>Нет товаров для кассы</h3>
+            <p>Добавьте товары в разделе Меню и включите отображение в POS.</p>
+        </div>
+    `;
+
+    document.querySelectorAll("[data-pos-product-id]").forEach((button) => {
+        button.addEventListener("click", () => addProductToActiveReceipt(button.dataset.posProductId));
+    });
+}
+
+function addProductToActiveReceipt(productId) {
+    const product = loadProducts(currentCompany.id).find((item) => Number(item.id) === Number(productId));
+
+    if (!product || !activeReceipt) {
+        return;
+    }
+
+    activeReceipt = addProductToReceipt(activeReceipt, product);
+    renderPos();
+}
+
+function renderActiveReceipt() {
+    if (!activeReceipt) {
+        return;
+    }
+
+    activeReceipt = calculateReceipt(activeReceipt);
+    document.getElementById("activeReceiptNumber").textContent = activeReceipt.number;
+    document.getElementById("receiptDiscount").value = activeReceipt.discount || 0;
+    document.getElementById("receiptSurcharge").value = activeReceipt.surcharge || 0;
+    document.getElementById("receiptSubtotal").textContent = formatMoney(activeReceipt.subtotal, currentCompany.settings.currency);
+    document.getElementById("receiptTotal").textContent = formatMoney(activeReceipt.total, currentCompany.settings.currency);
+    document.getElementById("receiptItems").innerHTML = activeReceipt.items.length ? activeReceipt.items.map((item) => `
+        <article class="receipt-item">
+            <div>
+                <strong>${helpers.escapeHtml(item.name)}</strong>
+                <small>${helpers.escapeHtml(item.comment || "Без комментария")}</small>
+                ${item.modifiers.length ? `<small>${item.modifiers.map((modifier) => helpers.escapeHtml(modifier.name)).join(", ")}</small>` : ""}
+            </div>
+            <div class="receipt-item__controls">
+                <button type="button" data-receipt-action="minus" data-item-id="${item.id}">−</button>
+                <span>${item.quantity}</span>
+                <button type="button" data-receipt-action="plus" data-item-id="${item.id}">+</button>
+            </div>
+            <strong>${formatMoney(item.total, currentCompany.settings.currency)}</strong>
+            <button type="button" data-receipt-action="comment" data-item-id="${item.id}">Комментарий</button>
+            <button type="button" data-receipt-action="modifier" data-item-id="${item.id}">Модификатор</button>
+            <button type="button" data-receipt-action="remove" data-item-id="${item.id}">×</button>
+        </article>
+    `).join("") : "<p class=\"empty-check\">Добавьте товары в чек.</p>";
+
+    document.querySelectorAll("[data-receipt-action]").forEach((button) => {
+        button.addEventListener("click", () => handleReceiptItemAction(button.dataset.receiptAction, button.dataset.itemId));
+    });
+}
+
+function handleReceiptItemAction(action, itemId) {
+    const item = activeReceipt.items.find((receiptItem) => Number(receiptItem.id) === Number(itemId));
+
+    if (!item) {
+        return;
+    }
+
+    if (action === "plus") {
+        activeReceipt = updateReceiptItem(activeReceipt, itemId, { quantity: item.quantity + 1 });
+    }
+
+    if (action === "minus") {
+        activeReceipt = updateReceiptItem(activeReceipt, itemId, { quantity: Math.max(1, item.quantity - 1) });
+    }
+
+    if (action === "remove") {
+        activeReceipt = removeReceiptItem(activeReceipt, itemId);
+    }
+
+    if (action === "comment") {
+        const comment = window.prompt("Комментарий к позиции", item.comment || "");
+        activeReceipt = updateReceiptItem(activeReceipt, itemId, { comment: comment || "" });
+    }
+
+    if (action === "modifier") {
+        const name = window.prompt("Модификатор", "Добавка");
+        const price = window.prompt("Цена модификатора", "0");
+        if (name) {
+            activeReceipt = updateReceiptItem(activeReceipt, itemId, {
+                modifiers: [...item.modifiers, { id: Date.now(), name, price: Number(price || 0) }],
+            });
+        }
+    }
+
+    renderPos();
+}
+
+function updateReceiptAdjustments() {
+    if (!activeReceipt) {
+        return;
+    }
+
+    activeReceipt = applyDiscount(activeReceipt, document.getElementById("receiptDiscount").value);
+    activeReceipt = applySurcharge(activeReceipt, document.getElementById("receiptSurcharge").value);
+    renderActiveReceipt();
+}
+
+function holdActiveReceipt() {
+    if (!activeReceipt || !activeReceipt.items.length) {
+        helpers.showToast("Нельзя отложить пустой чек");
+        return;
+    }
+
+    activeReceipt = holdReceipt(activeReceipt);
+    activeReceipt = createReceipt(currentCompany.id, document.getElementById("posRegisterSelect").value, currentUser.id);
+    helpers.showToast("Чек отложен");
+    renderPos();
+}
+
+async function payActiveReceipt(type) {
+    if (!activeReceipt || !activeReceipt.items.length) {
+        helpers.showToast("Чек пустой");
+        return;
+    }
+
+    const calculatedReceipt = calculateReceipt(activeReceipt);
+    let paidReceipt = null;
+
+    if (type === "mixed") {
+        const mixedPayment = await requestMixedPayment(calculatedReceipt.total);
+        if (!mixedPayment) {
+            return;
+        }
+        const { cash, card } = mixedPayment;
+        paidReceipt = payReceipt(calculatedReceipt, "mixed", { cash, card });
+    } else {
+        paidReceipt = payReceipt(calculatedReceipt, type);
+    }
+
+    if (!paidReceipt) {
+        helpers.showToast("Сумма оплаты меньше итога");
+        return;
+    }
+
+    activeReceipt = createReceipt(currentCompany.id, document.getElementById("posRegisterSelect").value, currentUser.id);
+    helpers.showToast("Продажа оформлена");
+    showPrintPreview(paidReceipt);
+    renderPos();
+}
+
+function requestMixedPayment(total) {
+    return new Promise((resolve) => {
+        document.getElementById("posModalTitle").textContent = "Смешанная оплата";
+        document.getElementById("posModalBody").innerHTML = `
+            <form class="pos-payment-form" id="mixedPaymentForm">
+                <div class="payment-total-card">
+                    <span>Итого к оплате</span>
+                    <strong>${formatMoney(total, currentCompany.settings.currency)}</strong>
+                    <small id="mixedPaymentHint">Введите сумму наличными. Карта заполнится автоматически.</small>
+                </div>
+                <label>Наличными
+                    <input name="cash" type="number" min="0" step="0.01" value="0" inputmode="decimal">
+                </label>
+                <label>Картой
+                    <input name="card" type="number" min="0" step="0.01" value="${total.toFixed(2)}" inputmode="decimal">
+                </label>
+                <div class="pos-modal-actions">
+                    <button class="secondary-btn" type="button" data-cancel-payment>Отменить</button>
+                    <button class="primary-btn" type="submit">Принять оплату</button>
+                </div>
+            </form>
+        `;
+        document.getElementById("posModal").hidden = false;
+
+        const form = document.getElementById("mixedPaymentForm");
+        const cashInput = form.elements.cash;
+        const cardInput = form.elements.card;
+        const hint = document.getElementById("mixedPaymentHint");
+
+        cashInput.addEventListener("input", () => {
+            const cash = Number(cashInput.value || 0);
+            const card = Math.max(0, total - cash);
+            cardInput.value = card.toFixed(2);
+            hint.textContent = cash + card >= total
+                ? "Сумма закрывает чек."
+                : `Не хватает ${formatMoney(total - cash - card, currentCompany.settings.currency)}.`;
+        });
+
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const cash = Number(cashInput.value || 0);
+            const card = Number(cardInput.value || 0);
+            closePosModal();
+            resolve({ cash, card });
+        });
+
+        form.querySelector("[data-cancel-payment]").addEventListener("click", () => {
+            closePosModal();
+            resolve(null);
+        });
+    });
+}
+
+function printActiveReceipt() {
+    if (!activeReceipt || !activeReceipt.items.length) {
+        helpers.showToast("Чек пустой");
+        return;
+    }
+
+    showPrintPreview(activeReceipt);
+}
+
+function showPrintPreview(receipt) {
+    document.getElementById("posModalTitle").textContent = "Печать чека";
+    document.getElementById("posModalBody").innerHTML = `
+        ${printReceiptHtml(receipt, currentCompany)}
+        <button class="primary-btn" type="button" onclick="window.print()">Печать</button>
+    `;
+    document.getElementById("posModal").hidden = false;
+}
+
+function showReceiptList(status) {
+    const receipts = loadReceipts(currentCompany.id, status);
+    document.getElementById("posModalTitle").textContent = status === "held" ? "Отложенные чеки" : "История чеков";
+    document.getElementById("posModalBody").innerHTML = receipts.length ? receipts.map((receipt) => `
+        <article class="history-receipt">
+            <div>
+                <strong>${receipt.number}</strong>
+                <p>${helpers.formatDate(receipt.createdAt)} • ${formatMoney(receipt.total, currentCompany.settings.currency)}</p>
+            </div>
+            ${status === "held" ? `<button class="primary-btn" type="button" data-open-held="${receipt.id}">Открыть</button>` : ""}
+            ${status === "paid" ? `<button class="secondary-btn" type="button" data-refund="${receipt.id}">Возврат</button>` : ""}
+        </article>
+    `).join("") : `
+        <div class="empty-state empty-state--action">
+            <span class="empty-state__icon">${status === "held" ? "⏸" : "🧾"}</span>
+            <h3>${status === "held" ? "Отложенных чеков нет" : "История чеков пока пустая"}</h3>
+            <p>${status === "held" ? "Отложите чек, если гость еще выбирает." : "После первой оплаты чеки появятся здесь."}</p>
+            <button class="primary-btn" type="button" data-close-pos-modal>Вернуться к кассе</button>
+        </div>
+    `;
+    document.getElementById("posModal").hidden = false;
+
+    document.querySelectorAll("[data-open-held]").forEach((button) => {
+        button.addEventListener("click", () => {
+            activeReceipt = reopenReceipt(loadReceipts(currentCompany.id).find((receipt) => Number(receipt.id) === Number(button.dataset.openHeld)));
+            closePosModal();
+            renderPos();
+        });
+    });
+
+    document.querySelectorAll("[data-refund]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const receipt = loadReceipts(currentCompany.id).find((item) => Number(item.id) === Number(button.dataset.refund));
+            const refund = refundReceipt(receipt);
+            showPrintPreview(refund);
+            renderPos();
+        });
+    });
+}
+
+function closePosModal() {
+    document.getElementById("posModal").hidden = true;
+}

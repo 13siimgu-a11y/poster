@@ -1,0 +1,32 @@
+{
+  "name": "pos-poster",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "prisma:generate": "prisma generate --schema server/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema server/prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema server/prisma/schema.prisma",
+    "prisma:seed": "node server/prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "latest",
+    "express": "latest",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "openai": "latest",
+    "prisma": "^6.19.3",
+    "socket.io": "^4.8.3",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0",
+    "zod": "^4.4.3"
+  }
+}

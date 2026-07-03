@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет - POS Poster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-shell" id="dashboardShell" hidden>
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-controls="dashboardSidebar" aria-expanded="true">
+            <span class="sidebar-toggle__icon" aria-hidden="true"></span>
+            <span class="sidebar-toggle__text">Скрыть меню</span>
+        </button>
+        <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+        <aside class="dash-sidebar" id="dashboardSidebar">
+            <div class="dash-brand">
+                <span id="companyLogoMark">P</span>
+                <div>
+                    <strong id="sidebarCompanyName">POS Poster</strong>
+                    <small id="sidebarCompanyType">Restaurant Dashboard</small>
+                </div>
+            </div>
+            <nav class="dash-nav" aria-label="Меню кабинета">
+                <button class="is-active" type="button" data-view="home">Главная</button>
+                <button type="button" data-view="workspace">Рабочее место</button>
+                <button type="button" data-view="ai">🤖 AI Assistant</button>
+                <button type="button" data-view="company">Мое заведение</button>
+                <button type="button" data-view="pos">Касса</button>
+                <button type="button" data-view="kitchen">🍳 Кухня</button>
+                <button type="button" data-view="menu">Меню</button>
+                <button type="button" data-view="categories">Категории</button>
+                <button type="button" data-view="floor">Залы и столы</button>
+                <button type="button" data-view="staff">Персонал</button>
+                <button type="button" data-view="clients">Клиенты</button>
+                <button type="button" data-view="warehouse">Склад</button>
+                <button type="button" data-view="procurement">🚚 Закупки</button>
+                <button type="button" data-view="reports">Отчеты</button>
+                <button type="button" data-view="settings">Настройки</button>
+                <button type="button" data-view="subscription">Подписка</button>
+            </nav>
+            <button class="dash-logout" id="logoutButton" type="button">Выход</button>
+        </aside>
+
+        <main class="dash-main">
+            <header class="dash-header">
+                <div>
+                    <p id="dashboardSubtitle">Личный кабинет</p>
+                    <h1 id="dashboardTitle">Главная</h1>
+                </div>
+                <button class="theme-toggle" id="themeToggle" type="button">Темная тема</button>
+            </header>
+
+            <section class="hero-company" id="companyHero"></section>
+
+            <section class="dash-view is-active" id="homeView">
+                <div class="metrics-grid" id="dashboardMetrics"></div>
+            </section>
+
+            <section class="dash-view" id="workspaceView">
+                <div class="staff-workspace" id="staffWorkspace"></div>
+            </section>
+
+            <section class="dash-view" id="aiView">
+                <div class="panel ai-page-card">
+                    <div>
+                        <h2>🤖 AI Assistant</h2>
+                        <p>Помощник понимает текущий раздел, данные заведения и может готовить безопасные действия через сервисы системы.</p>
+                    </div>
+                    <button class="primary-btn" id="openAIButton" type="button">Открыть чат</button>
+                </div>
+            </section>
+
+            <section class="dash-view" id="posView">
+                <div class="pos-shell">
+                    <div class="pos-main panel">
+                        <div class="pos-topbar">
+                            <div>
+                                <h2>POS-терминал</h2>
+                                <p>Быстрая продажа, несколько чеков, оплата и печать.</p>
+                            </div>
+                            <div class="pos-controls">
+                                <select id="posRegisterSelect"></select>
+                                <select id="posCashierSelect">
+                                    <option value="">Текущий кассир</option>
+                                </select>
+                                <button class="secondary-btn" id="newReceiptButton" type="button">Новый чек</button>
+                            </div>
+                        </div>
+                        <div class="pos-search-row">
+                            <input id="posSearch" type="search" placeholder="Быстрый поиск товара">
+                            <button class="secondary-btn" id="showHeldReceiptsButton" type="button">Отложенные</button>
+                            <button class="secondary-btn" id="showReceiptHistoryButton" type="button">История</button>
+                        </div>
+                        <div class="pos-workspace">
+                            <aside class="pos-categories" id="posCategories"></aside>
+                            <div class="pos-products" id="posProducts"></div>
+                        </div>
+                    </div>
+                    <aside class="pos-check panel">
+                        <div class="receipt-tabs" id="receiptTabs"></div>
+                        <div class="receipt-head">
+                            <div>
+                                <span id="activeReceiptNumber">Новый чек</span>
+                                <h3>Текущий чек</h3>
+                            </div>
+                            <button class="secondary-btn" id="holdReceiptButton" type="button">Отложить</button>
+                        </div>
+                        <div class="receipt-items" id="receiptItems"></div>
+                        <div class="receipt-adjustments">
+                            <label>Скидка<input id="receiptDiscount" type="number" min="0" value="0"></label>
+                            <label>Надбавка<input id="receiptSurcharge" type="number" min="0" value="0"></label>
+                        </div>
+                        <div class="receipt-summary">
+                            <div><span>Подытог</span><strong id="receiptSubtotal">0</strong></div>
+                            <div><span>Итого</span><strong id="receiptTotal">0</strong></div>
+                        </div>
+                        <div class="payment-grid">
+                            <button class="primary-btn" data-pay-type="cash" type="button">Наличные</button>
+                            <button class="primary-btn" data-pay-type="card" type="button">Карта</button>
+                            <button class="secondary-btn" data-pay-type="mixed" type="button">Смешанная</button>
+                            <button class="secondary-btn" id="printReceiptButton" type="button">Печать</button>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="dash-view" id="companyView">
+                <div class="panel">
+                    <div class="panel-heading">
+                        <h2>Мое заведение</h2>
+                        <p>Редактируйте основную информацию, контакты, валюту, график, налоги и обложку.</p>
+                    </div>
+                    <form class="company-form" id="companyForm">
+                        <div class="form-grid">
+                            <label>Название<input name="name" type="text" required></label>
+                            <label>Юридическое название<input name="legalName" type="text"></label>
+                            <label>Тип бизнеса<select name="businessType" id="businessTypeSelect"></select></label>
+                            <label>Телефон<input name="phone" type="text"></label>
+                            <label>Email<input name="email" type="email"></label>
+                            <label>Адрес<input name="street" type="text"></label>
+                            <label>Сайт<input name="website" type="url"></label>
+                            <label>Instagram<input name="instagram" type="text"></label>
+                            <label>Facebook<input name="facebook" type="text"></label>
+                            <label>Telegram<input name="telegram" type="text"></label>
+                            <label>Часовой пояс<input name="timezone" type="text" placeholder="Asia/Tbilisi"></label>
+                            <label>Валюта<select name="currency" id="currencySelect"></select></label>
+                            <label>Язык
+                                <select name="language">
+                                    <option value="ru">Русский</option>
+                                    <option value="en">English</option>
+                                    <option value="ka">ქართული</option>
+                                </select>
+                            </label>
+                            <label>НДС
+                                <select name="tax">
+                                    <option value="0">0%</option>
+                                    <option value="5">5%</option>
+                                    <option value="10">10%</option>
+                                    <option value="18">18%</option>
+                                    <option value="20">20%</option>
+                                    <option value="custom">Другая ставка</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label>Описание<textarea name="description" rows="4"></textarea></label>
+                        <div class="upload-grid">
+                            <div class="upload-card">
+                                <label>Логотип<input name="logo" type="file" accept="image/*"></label>
+                                <img id="logoPreview" alt="">
+                                <button class="secondary-btn" id="removeLogo" type="button">Удалить логотип</button>
+                            </div>
+                            <div class="upload-card">
+                                <label>Обложка<input name="banner" type="file" accept="image/*"></label>
+                                <img id="bannerPreview" alt="">
+                                <button class="secondary-btn" id="removeBanner" type="button">Удалить обложку</button>
+                            </div>
+                        </div>
+                        <div class="checkbox-row">
+                            <label><input name="pricesIncludeTax" type="checkbox"> Цены уже содержат налог</label>
+                        </div>
+                        <button class="primary-btn" type="submit">Сохранить изменения</button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="dash-view" id="settingsView">
+                <div class="settings-grid">
+                    <div class="panel">
+                        <h2>Рабочие смены</h2>
+                        <form class="mini-form" id="workingHoursForm">
+                            <label>Время открытия<input name="opensAt" type="time"></label>
+                            <label>Время закрытия<input name="closesAt" type="time"></label>
+                            <label>Рабочие дни<input name="days" type="text" placeholder="Пн, Вт, Ср, Чт, Пт"></label>
+                            <button class="primary-btn" type="submit">Сохранить</button>
+                        </form>
+                    </div>
+                    <div class="panel">
+                        <h2>QR-код заведения</h2>
+                        <img class="qr-image" id="qrImage" alt="QR-код заведения">
+                        <p>Позже этот QR-код можно использовать для QR-меню.</p>
+                    </div>
+                    <div class="panel">
+                        <h2>Уведомления</h2>
+                        <form class="mini-form" id="notificationsForm">
+                            <label><input name="email" type="checkbox"> Email</label>
+                            <label><input name="telegram" type="checkbox"> Telegram</label>
+                            <label><input name="push" type="checkbox"> Push</label>
+                            <button class="primary-btn" type="submit">Обновить</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dash-view" id="subscriptionView">
+                <div class="panel subscription-panel" id="subscriptionPanel"></div>
+            </section>
+
+            <section class="dash-view" id="kitchenView">
+                <div class="kitchen-header panel">
+                    <div>
+                        <h2>Kitchen Display System</h2>
+                        <p>Экран кухни: новые заказы, таймеры, статусы блюд и архив.</p>
+                    </div>
+                    <div class="kitchen-controls">
+                        <input id="kitchenSearch" type="search" placeholder="Поиск заказа, стола, блюда">
+                        <select id="kitchenFilter">
+                            <option value="all">Все</option>
+                            <option value="cooking">Готовятся</option>
+                            <option value="ready">Готовые</option>
+                            <option value="overdue">Просроченные</option>
+                            <option value="delivery">Доставка</option>
+                            <option value="pickup">Самовывоз</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="kitchen-stats" id="kitchenStats"></div>
+                <div class="kitchen-board" id="kitchenBoard"></div>
+            </section>
+
+            <section class="dash-view" id="menuView">
+                <div class="menu-toolbar panel">
+                    <div>
+                        <h2>Меню</h2>
+                        <p>Товары этого заведения для POS, QR-меню, доставки и аналитики.</p>
+                    </div>
+                    <button class="primary-btn" id="addProductButton" type="button">Добавить товар</button>
+                </div>
+                <div class="product-filters panel">
+                    <input id="productSearch" type="search" placeholder="Поиск по названию, SKU или описанию">
+                    <select id="productCategoryFilter"></select>
+                    <select id="productStatusFilter">
+                        <option value="">Все статусы</option>
+                        <option value="active">Активен</option>
+                        <option value="hidden">Скрыт</option>
+                        <option value="out_of_stock">Закончился</option>
+                        <option value="archive">Архив</option>
+                    </select>
+                    <select id="productSort">
+                        <option value="createdAt">По дате создания</option>
+                        <option value="name">По названию</option>
+                        <option value="price">По цене</option>
+                        <option value="popular">По популярности</option>
+                        <option value="category">По категории</option>
+                    </select>
+                    <button class="secondary-btn" id="exportProductsButton" type="button">Экспорт CSV</button>
+                </div>
+                <div class="product-layout">
+                    <aside class="panel category-sidebar">
+                        <h3>Категории</h3>
+                        <div id="menuCategoriesList"></div>
+                    </aside>
+                    <div class="products-grid" id="productsGrid"></div>
+                </div>
+            </section>
+
+            <section class="dash-view" id="categoriesView">
+                <div class="panel">
+                    <div class="panel-heading">
+                        <h2>Категории</h2>
+                        <p>Создавайте, редактируйте, удаляйте и меняйте порядок категорий.</p>
+                    </div>
+                    <form class="category-form" id="categoryForm">
+                        <input name="name" type="text" placeholder="Название категории" required>
+                        <input name="description" type="text" placeholder="Описание">
+                        <input name="icon" type="text" placeholder="Иконка" value="🍽">
+                        <input name="color" type="color" value="#3B82F6">
+                        <label class="checkbox-row"><input name="active" type="checkbox" checked> Активна</label>
+                        <button class="primary-btn" type="submit">Создать категорию</button>
+                    </form>
+                    <div class="category-manager" id="categoryManager"></div>
+                </div>
+            </section>
+
+            <section class="dash-view" id="floorView">
+                <div class="floor-header panel">
+                    <div>
+                        <h2>Залы и столы</h2>
+                        <p>Карта зала, статусы столов, заказы и бронирования.</p>
+                    </div>
+                    <div class="floor-actions">
+                        <button class="secondary-btn" id="createHallButton" type="button">Создать зал</button>
+                        <button class="primary-btn" id="createTableButton" type="button">Добавить стол</button>
+                    </div>
+                </div>
+                <div class="floor-stats" id="floorStats"></div>
+                <div class="floor-layout">
+                    <aside class="panel floor-sidebar">
+                        <h3>Залы</h3>
+                        <div id="hallsList"></div>
+                        <h3>Бронирования</h3>
+                        <div id="reservationsList"></div>
+                    </aside>
+                    <div class="panel floor-editor-panel">
+                        <div class="floor-tools">
+                            <button type="button" data-table-type="round">Круглый стол</button>
+                            <button type="button" data-table-type="square">Квадратный стол</button>
+                            <button type="button" data-table-type="rect">Прямоугольный</button>
+                            <button type="button" data-table-type="bar">Барная стойка</button>
+                            <button type="button" data-table-type="vip">VIP-зона</button>
+                        </div>
+                        <div class="floor-canvas" id="floorCanvas"></div>
+                    </div>
+                </div>
+            </section>
+            <section class="dash-view" id="staffView">
+                <div class="staff-header panel">
+                    <div>
+                        <h2>👥 Персонал</h2>
+                        <p>Сотрудники, должности, смены, расписание, зарплата и права доступа.</p>
+                    </div>
+                    <div class="staff-actions">
+                        <button class="secondary-btn" id="openShiftByPinButton" type="button">Открыть смену по PIN</button>
+                        <button class="primary-btn" id="createEmployeeButton" type="button">Добавить сотрудника</button>
+                    </div>
+                </div>
+                <div class="staff-stats" id="staffStats"></div>
+                <div class="staff-tabs">
+                    <button class="is-active" type="button" data-staff-tab="employees">Сотрудники</button>
+                    <button type="button" data-staff-tab="positions">Должности</button>
+                    <button type="button" data-staff-tab="shifts">Смены</button>
+                    <button type="button" data-staff-tab="schedule">Расписание</button>
+                    <button type="button" data-staff-tab="time">Рабочее время</button>
+                    <button type="button" data-staff-tab="payroll">Зарплата</button>
+                    <button type="button" data-staff-tab="permissions">Права доступа</button>
+                </div>
+                <div class="staff-filters panel">
+                    <input id="staffSearch" type="search" placeholder="Поиск по имени, телефону, роли">
+                    <select id="staffStatusFilter">
+                        <option value="">Все статусы</option>
+                        <option value="working">Работает</option>
+                        <option value="vacation">В отпуске</option>
+                        <option value="sick">На больничном</option>
+                        <option value="fired">Уволен</option>
+                        <option value="blocked">Заблокирован</option>
+                    </select>
+                </div>
+                <div class="panel staff-panel" id="staffContent"></div>
+            </section>
+            <section class="dash-view" id="clientsView"></section>
+            <section class="dash-view" id="warehouseView">
+                <div class="inventory-header panel">
+                    <div>
+                        <h2>📦 Склад</h2>
+                        <p>Остатки, ингредиенты, рецептуры, движения, инвентаризация и списания.</p>
+                    </div>
+                    <button class="primary-btn" id="createIngredientButton" type="button">Добавить ингредиент</button>
+                </div>
+                <div class="inventory-alerts" id="inventoryAlerts"></div>
+                <div class="inventory-stats" id="inventoryStats"></div>
+                <div class="inventory-tabs">
+                    <button class="is-active" type="button" data-inventory-tab="stock">Остатки</button>
+                    <button type="button" data-inventory-tab="ingredients">Ингредиенты</button>
+                    <button type="button" data-inventory-tab="recipes">Рецептуры</button>
+                    <button type="button" data-inventory-tab="movements">Движение товаров</button>
+                    <button type="button" data-inventory-tab="audit">Инвентаризация</button>
+                    <button type="button" data-inventory-tab="writeoff">Списание</button>
+                    <button type="button" data-inventory-tab="units">Единицы измерения</button>
+                </div>
+                <div class="inventory-filters panel">
+                    <input id="inventorySearch" type="search" placeholder="Поиск по названию или SKU">
+                    <select id="inventoryCategoryFilter"></select>
+                    <select id="inventoryStatusFilter">
+                        <option value="">Все статусы</option>
+                        <option value="ok">В наличии</option>
+                        <option value="low">Заканчивается</option>
+                        <option value="out">Нет в наличии</option>
+                    </select>
+                </div>
+                <div class="panel inventory-panel" id="inventoryContent"></div>
+            </section>
+            <section class="dash-view" id="procurementView">
+                <div class="procurement-header panel">
+                    <div>
+                        <h2>🚚 Закупки</h2>
+                        <p>Поставщики, заказы, приемка, возвраты и история закупок.</p>
+                    </div>
+                    <div class="procurement-actions">
+                        <button class="secondary-btn" id="createSupplierButton" type="button">Добавить поставщика</button>
+                        <button class="primary-btn" id="createPurchaseButton" type="button">Создать заказ</button>
+                    </div>
+                </div>
+                <div class="procurement-stats" id="procurementStats"></div>
+                <div class="procurement-recommendations" id="procurementRecommendations"></div>
+                <div class="procurement-tabs">
+                    <button class="is-active" type="button" data-procurement-tab="suppliers">Поставщики</button>
+                    <button type="button" data-procurement-tab="orders">Закупки</button>
+                    <button type="button" data-procurement-tab="receiving">Приемка товара</button>
+                    <button type="button" data-procurement-tab="returns">Возвраты</button>
+                    <button type="button" data-procurement-tab="history">История</button>
+                </div>
+                <div class="panel procurement-panel" id="procurementContent"></div>
+            </section>
+            <section class="dash-view" id="reportsView"></section>
+        </main>
+    </div>
+
+    <div class="wizard" id="companyWizard" hidden>
+        <div class="wizard-card">
+            <div class="wizard-head">
+                <span>Первое заведение</span>
+                <h1>Создайте свое заведение</h1>
+                <p>После создания откроется личный кабинет.</p>
+            </div>
+            <div class="wizard-progress" id="wizardProgress"></div>
+            <form id="wizardForm" novalidate>
+                <section class="wizard-step is-active" data-step="0">
+                    <h2>Основная информация</h2>
+                    <div class="form-grid">
+                        <label>Название заведения<input name="name" type="text" required></label>
+                        <label>Юридическое название<input name="legalName" type="text"></label>
+                        <label>Тип бизнеса<select name="businessType" id="wizardBusinessType"></select></label>
+                        <label>Логотип<input name="logo" type="file" accept="image/*"></label>
+                    </div>
+                    <label>Описание<textarea name="description" rows="4"></textarea></label>
+                </section>
+
+                <section class="wizard-step" data-step="1">
+                    <h2>Контакты</h2>
+                    <div class="form-grid">
+                        <label>Страна<input name="country" type="text"></label>
+                        <label>Город<input name="city" type="text"></label>
+                        <label>Адрес<input name="street" type="text"></label>
+                        <label>Индекс<input name="postalCode" type="text"></label>
+                        <label>Телефон<input name="phone" type="text"></label>
+                        <label>Email<input name="email" type="email"></label>
+                        <label>Сайт<input name="website" type="url"></label>
+                        <label>Instagram<input name="instagram" type="text"></label>
+                        <label>Facebook<input name="facebook" type="text"></label>
+                        <label>Telegram<input name="telegram" type="text"></label>
+                    </div>
+                </section>
+
+                <section class="wizard-step" data-step="2">
+                    <h2>Валюта</h2>
+                    <div class="choice-grid" id="wizardCurrency"></div>
+                </section>
+
+                <section class="wizard-step" data-step="3">
+                    <h2>Настройки заведения</h2>
+                    <div class="form-grid">
+                        <label>Часовой пояс<input name="timezone" type="text" placeholder="Asia/Tbilisi"></label>
+                        <label>Язык
+                            <select name="language">
+                                <option value="ru">Русский</option>
+                                <option value="en">English</option>
+                                <option value="ka">ქართული</option>
+                            </select>
+                        </label>
+                        <label>Формат времени
+                            <select name="timeFormat">
+                                <option value="24h">24 часа</option>
+                                <option value="12h">12 часов</option>
+                            </select>
+                        </label>
+                        <label>Формат даты
+                            <select name="dateFormat">
+                                <option value="DD.MM.YYYY">ДД.ММ.ГГГГ</option>
+                                <option value="MM/DD/YYYY">ММ/ДД/ГГГГ</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="wizard-step" data-step="4">
+                    <h2>Налоги</h2>
+                    <div class="form-grid">
+                        <label>НДС
+                            <select name="tax">
+                                <option value="0">0%</option>
+                                <option value="5">5%</option>
+                                <option value="10">10%</option>
+                                <option value="18" selected>18%</option>
+                                <option value="20">20%</option>
+                                <option value="custom">Другая ставка</option>
+                            </select>
+                        </label>
+                        <label class="checkbox-row"><input name="pricesIncludeTax" type="checkbox" checked> Цены уже содержат налог</label>
+                    </div>
+                </section>
+
+                <section class="wizard-step" data-step="5">
+                    <h2>Подтверждение</h2>
+                    <div class="summary" id="wizardSummary"></div>
+                </section>
+
+                <div class="wizard-actions">
+                    <button class="secondary-btn" id="wizardPrev" type="button">Назад</button>
+                    <button class="primary-btn" id="wizardNext" type="button">Далее</button>
+                    <button class="primary-btn" id="wizardSubmit" type="submit" hidden>Создать заведение</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="dash-toast" id="dashToast" role="status" aria-live="polite"></div>
+
+    <div class="product-modal" id="productModal" hidden>
+        <div class="product-modal__overlay" data-close-product-modal></div>
+        <div class="product-modal__content">
+            <button class="product-modal__close" type="button" data-close-product-modal>×</button>
+            <h2 id="productModalTitle">Добавить товар</h2>
+            <form class="product-form" id="productForm" novalidate>
+                <input name="productId" type="hidden">
+                <div class="product-form__grid">
+                    <label>Название<input name="name" type="text" required></label>
+                    <label>Категория<select name="categoryId" required></select></label>
+                    <label>Цена<input name="price" type="number" min="0" step="0.01" value="0"></label>
+                    <label>Себестоимость<input name="costPrice" type="number" min="0" step="0.01" value="0"></label>
+                    <label>Количество<input name="quantity" type="number" min="0" value="0"></label>
+                    <label>Минимальный остаток<input name="minQuantity" type="number" min="0" value="0"></label>
+                    <label>Единица измерения<select name="unit"></select></label>
+                    <label>Статус
+                        <select name="status">
+                            <option value="active">Активен</option>
+                            <option value="hidden">Скрыт</option>
+                            <option value="out_of_stock">Закончился</option>
+                            <option value="archive">Архив</option>
+                        </select>
+                    </label>
+                    <label>Вес<input name="weight" type="number" min="0" value="0"></label>
+                    <label>Объем<input name="volume" type="number" min="0" value="0"></label>
+                    <label>Порций<input name="portions" type="number" min="1" value="1"></label>
+                    <label>Главное изображение<input name="image" type="file" accept="image/*"></label>
+                </div>
+                <label>Описание<textarea name="description" rows="3"></textarea></label>
+                <label>Полное описание<textarea name="fullDescription" rows="4"></textarea></label>
+                <label>Ингредиенты<textarea name="ingredients" rows="2" placeholder="Каждый ингредиент через запятую"></textarea></label>
+                <div class="product-form__grid">
+                    <label>Калории<input name="calories" type="number" min="0" value="0"></label>
+                    <label>Белки<input name="protein" type="number" min="0" value="0"></label>
+                    <label>Жиры<input name="fat" type="number" min="0" value="0"></label>
+                    <label>Углеводы<input name="carbs" type="number" min="0" value="0"></label>
+                </div>
+                <div class="switch-grid">
+                    <label><input name="active" type="checkbox" checked> Активен</label>
+                    <label><input name="popular" type="checkbox"> Популярный</label>
+                    <label><input name="novelty" type="checkbox"> Новинка</label>
+                    <label><input name="recommended" type="checkbox"> Рекомендуемый</label>
+                    <label><input name="qrVisible" type="checkbox" checked> QR-меню</label>
+                    <label><input name="posVisible" type="checkbox" checked> POS</label>
+                </div>
+                <div class="tags-grid" id="productTags"></div>
+                <div class="product-extra-grid">
+                    <label>Модификаторы<textarea name="modifiers" rows="2" placeholder="Размер: Маленький 0, Средний 2"></textarea></label>
+                    <label>Вариации<textarea name="variants" rows="2" placeholder="25 см: 20, 30 см: 25"></textarea></label>
+                </div>
+                <button class="primary-btn" type="submit">Сохранить товар</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="pos-modal" id="posModal" hidden>
+        <div class="pos-modal__overlay" data-close-pos-modal></div>
+        <div class="pos-modal__content">
+            <button class="pos-modal__close" type="button" data-close-pos-modal>×</button>
+            <h2 id="posModalTitle">POS</h2>
+            <div id="posModalBody"></div>
+        </div>
+    </div>
+
+    <div class="floor-modal" id="floorModal" hidden>
+        <div class="floor-modal__overlay" data-close-floor-modal></div>
+        <div class="floor-modal__content">
+            <button class="floor-modal__close" type="button" data-close-floor-modal>×</button>
+            <h2 id="floorModalTitle">Стол</h2>
+            <div id="floorModalBody"></div>
+        </div>
+    </div>
+
+    <div class="inventory-modal" id="inventoryModal" hidden>
+        <div class="inventory-modal__overlay" data-close-inventory-modal></div>
+        <div class="inventory-modal__content">
+            <button class="inventory-modal__close" type="button" data-close-inventory-modal>×</button>
+            <h2 id="inventoryModalTitle">Склад</h2>
+            <div id="inventoryModalBody"></div>
+        </div>
+    </div>
+
+    <div class="procurement-modal" id="procurementModal" hidden>
+        <div class="procurement-modal__overlay" data-close-procurement-modal></div>
+        <div class="procurement-modal__content">
+            <button class="procurement-modal__close" type="button" data-close-procurement-modal>×</button>
+            <h2 id="procurementModalTitle">Закупки</h2>
+            <div id="procurementModalBody"></div>
+        </div>
+    </div>
+
+    <div class="staff-modal" id="staffModal" hidden>
+        <div class="staff-modal__overlay" data-close-staff-modal></div>
+        <div class="staff-modal__content">
+            <button class="staff-modal__close" type="button" data-close-staff-modal>×</button>
+            <h2 id="staffModalTitle">Персонал</h2>
+            <div id="staffModalBody"></div>
+        </div>
+    </div>
+
+    <div class="workspace-modal" id="workspaceModal" hidden>
+        <div class="workspace-modal__overlay" data-close-workspace-modal></div>
+        <div class="workspace-modal__content">
+            <button class="workspace-modal__close" type="button" data-close-workspace-modal>×</button>
+            <h2 id="workspaceModalTitle">Рабочее место</h2>
+            <div id="workspaceModalBody"></div>
+        </div>
+    </div>
+
+    <button class="ai-floating-button" id="aiFloatingButton" type="button">🤖</button>
+
+    <aside class="ai-assistant-panel" id="aiAssistantPanel" hidden>
+        <div class="ai-panel-head">
+            <div>
+                <strong>AI Assistant</strong>
+                <span id="aiContextLabel">Контекст</span>
+            </div>
+            <button type="button" data-close-ai>×</button>
+        </div>
+        <input class="ai-history-search" id="aiHistorySearch" type="search" placeholder="Поиск по истории">
+        <div class="ai-quick-actions" id="aiQuickActions"></div>
+        <div class="ai-messages" id="aiMessages"></div>
+        <form class="ai-chat-form" id="aiChatForm">
+            <input id="aiMessageInput" type="text" placeholder="Напишите команду или вопрос">
+            <button class="primary-btn" type="submit">Отправить</button>
+        </form>
+    </aside>
+
+    <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
