@@ -258,6 +258,126 @@
     }
 }
 
+/* Reliable mobile layout for the public site */
+@media (max-width: 900px) {
+    .nav,
+    .header__actions {
+        right: 12px;
+        left: 12px;
+    }
+
+    .nav {
+        top: 84px;
+        max-height: calc(100dvh - 180px);
+        border-radius: 22px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .header__actions {
+        bottom: 12px;
+        max-height: none;
+    }
+
+    .nav a,
+    .header__actions .btn {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .header__actions .btn {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    html {
+        scroll-padding-top: 82px;
+    }
+
+    .section {
+        padding: 64px 0;
+    }
+
+    .section-heading {
+        margin-bottom: 28px;
+    }
+
+    .section-heading h2,
+    .company-card h2,
+    .pricing-card h2 {
+        font-size: clamp(1.75rem, 8vw, 2.6rem);
+    }
+
+    .hero__content p,
+    .section-heading p,
+    .company-card p,
+    .pricing-card p {
+        font-size: 1rem;
+    }
+
+    .hero__actions {
+        display: grid;
+        gap: 10px;
+    }
+
+    .btn,
+    .modal__content button {
+        min-height: 48px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        width: min(calc(100% - 20px), 440px);
+    }
+
+    .header {
+        height: 66px;
+    }
+
+    .nav {
+        top: 76px;
+        max-height: calc(100dvh - 158px);
+        padding: 10px;
+    }
+
+    .nav a {
+        padding: 12px;
+    }
+
+    .hero {
+        padding-top: 96px;
+    }
+
+    .hero__content h1 {
+        font-size: clamp(2.15rem, 12vw, 3.25rem);
+    }
+
+    .feature-card,
+    .module-card,
+    .audience-card,
+    .step-card,
+    .testimonial-card,
+    .company-card,
+    .pricing-card,
+    .modal__content {
+        padding: 20px;
+        border-radius: 20px;
+    }
+
+    .terminal-card__screen {
+        padding: 16px;
+    }
+
+    .product-row,
+    .terminal-card__total {
+        gap: 10px;
+        font-size: 14px;
+    }
+}
+
 @media (max-width: 480px) {
     .container {
         width: min(calc(100% - 24px), 440px);

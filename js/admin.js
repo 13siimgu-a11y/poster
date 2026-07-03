@@ -1,22 +1,9 @@
 import { checkUser, initializeAuthSystem, logout } from "./auth.js";
+import { api } from "./apiClient.js";
 import { createLog, loadLogs } from "./logs.js";
 import { createPlan, deletePlan, loadPlans, updatePlan } from "./plans.js";
-import { canAccessAdmin, changeRole, ROLE_LABELS, ROLES } from "./roles.js";
-import { getStatistics } from "./statistics.js";
+import { canAccessAdmin, ROLE_LABELS, ROLES } from "./roles.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
-import {
-    extendSubscription,
-    grantSubscription,
-    removeSubscription,
-    checkSubscription,
-} from "./subscriptions.js";
-import {
-    blockUser,
-    deleteUser,
-    loadUsers,
-    unblockUser,
-    updateUser,
-} from "./users.js";
 
 const sectionTitles = {
     dashboard: "Dashboard",
@@ -30,8 +17,9 @@ const sectionTitles = {
 
 let currentSection = "dashboard";
 let toastTimer = null;
+let adminUsers = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     initializeAuthSystem();
 
     const currentUser = checkUser();
@@ -46,30 +34,30 @@ document.addEventListener("DOMContentLoaded", () => {
     bindSettingsForm();
     bindSubscriptionModal();
     bindEditorModal();
-    renderAll();
+    await renderAll();
 });
 
 function bindNavigation() {
     document.querySelectorAll(".admin-nav button").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
             currentSection = button.dataset.section;
             document.querySelectorAll(".admin-nav button").forEach((item) => item.classList.remove("is-active"));
             button.classList.add("is-active");
             document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("is-active"));
             document.getElementById(`${currentSection}Section`).classList.add("is-active");
             document.getElementById("sectionTitle").textContent = sectionTitles[currentSection];
-            renderAll();
+            await renderAll();
         });
     });
 
-    document.getElementById("logoutButton").addEventListener("click", () => {
-        logout();
+    document.getElementById("logoutButton").addEventListener("click", async () => {
+        await logout();
         window.location.href = "index.html";
     });
 }
 
 function bindActions() {
-    document.addEventListener("click", (event) => {
+    document.addEventListener("click", async (event) => {
         const button = event.target.closest("[data-action]");
 
         if (!button) {
@@ -85,29 +73,29 @@ function bindActions() {
                 break;
             case "delete-user":
                 if (window.confirm("Удалить пользователя?")) {
-                    deleteUser(userId);
+                    await api.delete(`/admin/users/${userId}`);
                     showToast("Пользователь удален");
                 }
                 break;
             case "block-user":
-                blockUser(userId);
+                await api.patch(`/admin/users/${userId}`, { status: "blocked" });
                 showToast("Пользователь заблокирован");
                 break;
             case "unblock-user":
-                unblockUser(userId);
+                await api.patch(`/admin/users/${userId}`, { status: "active" });
                 showToast("Пользователь разблокирован");
                 break;
             case "change-role":
-                editRole(userId);
+                await editRole(userId);
                 break;
             case "extend-subscription":
-                extendUserSubscription(userId);
+                await extendUserSubscription(userId);
                 break;
             case "grant-subscription":
                 openSubscriptionModal(userId);
                 break;
             case "remove-subscription":
-                removeSubscription(userId);
+                await api.delete(`/admin/users/${userId}/subscription`);
                 showToast("Подписка удалена");
                 break;
             case "edit-plan":
@@ -123,7 +111,7 @@ function bindActions() {
                 break;
         }
 
-        renderAll();
+        await renderAll();
     });
 }
 
@@ -171,13 +159,12 @@ function bindSubscriptionModal() {
         item.addEventListener("click", closeSubscriptionModal);
     });
 
-    document.getElementById("subscriptionForm").addEventListener("submit", (event) => {
+    document.getElementById("subscriptionForm").addEventListener("submit", async (event) => {
         event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        grantSubscription(formData.get("userId"), formData.get("plan"));
+        await grantUserSubscription(new FormData(event.currentTarget));
         closeSubscriptionModal();
         showToast("Подписка назначена");
-        renderAll();
+        await renderAll();
     });
 }
 
@@ -187,7 +174,8 @@ function bindEditorModal() {
     });
 }
 
-function renderAll() {
+async function renderAll() {
+    await loadAdminUsers();
     renderDashboard();
     renderUsers();
     renderSubscriptions();
@@ -196,8 +184,83 @@ function renderAll() {
     renderLogs();
 }
 
+async function loadAdminUsers() {
+    try {
+        adminUsers = (await api.get("/admin/users")).map(normalizeAdminUser);
+    } catch (error) {
+        adminUsers = [];
+        showToast(error.message || "Не удалось загрузить пользователей");
+    }
+}
+
+function normalizeAdminUser(user) {
+    const latestSubscription = [...(user.subscriptions || [])].sort((left, right) => (
+        new Date(right.createdAt || right.startDate || 0).getTime() - new Date(left.createdAt || left.startDate || 0).getTime()
+    ))[0];
+
+    return {
+        ...user,
+        subscription: latestSubscription
+            ? {
+                plan: latestSubscription.planName || "manual",
+                price: Number(latestSubscription.price || 0),
+                startDate: latestSubscription.startDate || latestSubscription.createdAt || "",
+                endDate: latestSubscription.endDate || "",
+                lifetime: Boolean(latestSubscription.lifetime),
+                status: latestSubscription.status || "active",
+            }
+            : {
+                plan: "none",
+                price: 0,
+                startDate: "",
+                endDate: "",
+                lifetime: false,
+                status: "expired",
+            },
+        lastLogin: user.lastLoginAt || "",
+    };
+}
+
+function getAdminStatistics() {
+    const paidUsers = adminUsers.filter((user) => (
+        user.subscription?.status === "active"
+        && user.subscription?.plan !== "trial"
+        && user.subscription?.plan !== "none"
+        && Number(user.subscription?.price) > 0
+    ));
+    const activeSubscriptions = adminUsers.filter((user) => user.subscription?.status === "active");
+    const expiredSubscriptions = adminUsers.filter((user) => user.subscription?.status === "expired");
+    const newRegistrations = adminUsers.filter((user) => {
+        const createdAt = new Date(user.createdAt).getTime();
+        return Date.now() - createdAt <= 7 * 24 * 60 * 60 * 1000;
+    });
+    const chartDays = Array.from({ length: 7 }, (_, index) => 6 - index).map((dayOffset) => {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() - dayOffset);
+        const isSameDay = (dateValue) => new Date(dateValue).toDateString() === targetDate.toDateString();
+
+        return {
+            label: dayOffset === 0 ? "Сегодня" : `${dayOffset} дн.`,
+            users: adminUsers.filter((user) => isSameDay(user.createdAt)).length,
+            paid: paidUsers.filter((user) => isSameDay(user.subscription?.startDate)).length,
+        };
+    });
+
+    return {
+        totalUsers: adminUsers.length,
+        activeUsers: adminUsers.filter((user) => user.status === "active").length,
+        trialAccounts: adminUsers.filter((user) => user.subscription?.plan === "trial").length,
+        paidAccounts: paidUsers.length,
+        expiredSubscriptions: expiredSubscriptions.length,
+        revenue: paidUsers.reduce((sum, user) => sum + Number(user.subscription?.price || 0), 0),
+        newRegistrations: newRegistrations.length,
+        activeSubscriptions: activeSubscriptions.length,
+        charts: chartDays,
+    };
+}
+
 function renderDashboard() {
-    const stats = getStatistics();
+    const stats = getAdminStatistics();
     const metrics = [
         ["Общее количество пользователей", stats.totalUsers],
         ["Активных пользователей", stats.activeUsers],
@@ -219,7 +282,7 @@ function renderDashboard() {
 }
 
 function renderUsers() {
-    const users = loadUsers().map(checkSubscription);
+    const users = adminUsers;
     document.getElementById("usersCount").textContent = `${users.length} пользователей`;
     document.getElementById("usersTable").innerHTML = users.map((user) => `
         <tr>
@@ -249,7 +312,7 @@ function renderUsers() {
 }
 
 function renderSubscriptions() {
-    const users = loadUsers().map(checkSubscription);
+    const users = adminUsers;
     document.getElementById("subscriptionsGrid").innerHTML = users.map((user) => `
         <article class="subscription-card">
             <div>
@@ -286,7 +349,7 @@ function renderPlans() {
 }
 
 function renderStatistics() {
-    const stats = getStatistics();
+    const stats = getAdminStatistics();
     const chartMax = Math.max(1, ...stats.charts.flatMap((item) => [item.users, item.paid]));
 
     document.getElementById("statisticsMetrics").innerHTML = [
@@ -343,7 +406,7 @@ function renderLogItems(logs) {
 }
 
 function editUser(userId) {
-    const user = loadUsers().find((item) => Number(item.id) === Number(userId));
+    const user = adminUsers.find((item) => String(item.id) === String(userId));
 
     if (!user) {
         return;
@@ -358,7 +421,7 @@ function editUser(userId) {
         </form>
     `;
     openEditorModal();
-    document.getElementById("editUserForm").addEventListener("submit", (event) => {
+    document.getElementById("editUserForm").addEventListener("submit", async (event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const username = String(formData.get("username")).trim();
@@ -369,15 +432,15 @@ function editUser(userId) {
             return;
         }
 
-        updateUser(userId, { username, email });
+        await api.patch(`/admin/users/${userId}`, { username, email });
         createLog("Изменил пользователя", { userId: user.id, username });
         closeEditorModal();
         showToast("Пользователь обновлен");
-        renderAll();
+        await renderAll();
     });
 }
 
-function editRole(userId) {
+async function editRole(userId) {
     const roles = Object.values(ROLES).join(", ");
     const role = window.prompt(`Новая роль (${roles})`);
 
@@ -385,19 +448,26 @@ function editRole(userId) {
         return;
     }
 
-    const updatedUser = changeRole(userId, role.trim());
-    showToast(updatedUser ? "Роль изменена" : "Некорректная роль");
+    if (!Object.values(ROLES).includes(role.trim())) {
+        showToast("Некорректная роль");
+        return;
+    }
+
+    await api.patch(`/admin/users/${userId}`, { role: role.trim() });
+    showToast("Роль изменена");
+    await renderAll();
 }
 
-function extendUserSubscription(userId) {
+async function extendUserSubscription(userId) {
     const days = window.prompt("На сколько дней продлить?", "30");
 
     if (!days || Number.isNaN(Number(days))) {
         return;
     }
 
-    extendSubscription(userId, Number(days));
+    await api.post(`/admin/users/${userId}/subscription/extend`, { days: Number(days) });
     showToast("Подписка продлена");
+    await renderAll();
 }
 
 function editPlan(planId) {
@@ -421,7 +491,7 @@ function editPlan(planId) {
 }
 
 function openSubscriptionModal(userId) {
-    const user = loadUsers().find((item) => Number(item.id) === Number(userId));
+    const user = adminUsers.find((item) => String(item.id) === String(userId));
     const modal = document.getElementById("subscriptionModal");
 
     if (!user) {
@@ -432,6 +502,20 @@ function openSubscriptionModal(userId) {
     document.getElementById("subscriptionForm").elements.userId.value = user.id;
     modal.classList.add("is-open");
     modal.setAttribute("aria-hidden", "false");
+}
+
+async function grantUserSubscription(formData) {
+    const userId = formData.get("userId");
+    const planName = formData.get("plan");
+    const lifetime = String(planName).toLowerCase() === "lifetime";
+    const endDate = lifetime ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    await api.post(`/admin/users/${userId}/subscription/grant`, {
+        planName,
+        price: 0,
+        lifetime,
+        endDate,
+    });
 }
 
 function closeSubscriptionModal() {

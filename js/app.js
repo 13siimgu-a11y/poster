@@ -115,9 +115,9 @@ function bindAuthForms() {
     const registerForm = document.getElementById("registerForm");
     const loginForm = document.getElementById("loginForm");
 
-    registerForm.addEventListener("submit", (event) => {
+    registerForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const user = register(new FormData(registerForm));
+        const user = await register(new FormData(registerForm));
 
         if (user) {
             closeModal("registerModal");
@@ -125,9 +125,9 @@ function bindAuthForms() {
         }
     });
 
-    loginForm.addEventListener("submit", (event) => {
+    loginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const user = login(new FormData(loginForm));
+        const user = await login(new FormData(loginForm));
 
         if (user) {
             closeModal("loginModal");
@@ -163,8 +163,8 @@ function renderUserState(user) {
         <button class="btn btn--ghost" type="button" id="logoutButton">Выйти</button>
     `;
 
-    document.getElementById("logoutButton").addEventListener("click", () => {
-        logout();
+    document.getElementById("logoutButton").addEventListener("click", async () => {
+        await logout();
         renderUserState(null);
     });
 }

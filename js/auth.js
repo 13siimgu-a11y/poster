@@ -1,5 +1,6 @@
 import { createDefaultPlans } from "./plans.js";
 import { loadEmployees } from "./employees.js";
+import { api } from "./apiClient.js";
 import { canAccessAdmin } from "./roles.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 import { checkSubscription } from "./subscriptions.js";
@@ -62,9 +63,8 @@ export function checkUser() {
     }
 }
 
-export function register(formData) {
+export async function register(formData) {
     initializeAuthSystem();
-    const users = loadUsers();
     const username = formData.get("username").trim();
     const email = formData.get("email").trim().toLowerCase();
     const password = formData.get("password");
@@ -85,35 +85,39 @@ export function register(formData) {
         return null;
     }
 
-    const isDuplicate = users.some((user) => (
-        user.username.toLowerCase() === username.toLowerCase() || user.email === email
-    ));
-
-    if (isDuplicate) {
-        notify("Пользователь с таким Username или Email уже существует", "error");
+    try {
+        const result = await api.post("/auth/register", {
+            username,
+            email,
+            password,
+        });
+        api.setAccessToken(result.accessToken);
+        const user = normalizeApiUser(result.user);
+        storage.set(STORAGE_KEYS.currentUser, user);
+        notify("Регистрация успешно завершена", "success");
+        return user;
+    } catch (error) {
+        notify(error.message || "Не удалось зарегистрироваться", "error");
         return null;
     }
-
-    const user = createUser({
-        username,
-        email,
-        password,
-    });
-
-    notify("Регистрация успешно завершена", "success");
-    return user;
 }
 
-export function login(formData) {
+export async function login(formData) {
     initializeAuthSystem();
     const username = formData.get("username").trim();
     const password = formData.get("password");
-    const users = loadUsers();
-    const user = users.find((item) => (
-        item.username.toLowerCase() === username.toLowerCase() && item.password === password
-    ));
 
-    if (!user) {
+    try {
+        const result = await api.post("/auth/login", {
+            usernameOrEmail: username,
+            password,
+        });
+        api.setAccessToken(result.accessToken);
+        const user = normalizeApiUser(result.user);
+        storage.set(STORAGE_KEYS.currentUser, user);
+        notify(`Добро пожаловать, ${user.username}`, "success");
+        return user;
+    } catch {
         const employeeSession = loginEmployee(username, password);
         if (employeeSession) {
             return employeeSession;
@@ -122,23 +126,6 @@ export function login(formData) {
         notify("Неверный Username или Password", "error");
         return null;
     }
-
-    if (user.status === "blocked") {
-        notify("Ваш аккаунт заблокирован. Обратитесь к администратору.", "error");
-        return null;
-    }
-
-    const checkedUser = checkSubscription(user);
-
-    if (!canAccessAdmin(checkedUser) && checkedUser.subscription?.status === "expired") {
-        notify("Ваш пробный период закончился. Приобретите подписку.", "error");
-        return null;
-    }
-
-    const updatedUser = setLastLogin(checkedUser.id);
-    storage.set(STORAGE_KEYS.currentUser, updatedUser);
-    notify(`Добро пожаловать, ${updatedUser.username}`, "success");
-    return updatedUser;
 }
 
 function loginEmployee(username, password) {
@@ -180,7 +167,9 @@ function buildEmployeeSession(employee) {
     };
 }
 
-export function logout() {
+export async function logout() {
+    await api.post("/auth/logout", {}).catch(() => null);
+    api.setAccessToken(null);
     storage.remove(STORAGE_KEYS.currentUser);
     notify("Вы вышли из аккаунта", "success");
 }
@@ -191,4 +180,12 @@ export function persistCurrentUser(user) {
 
 export function replaceUsers(users) {
     return saveUsers(users);
+}
+
+function normalizeApiUser(user) {
+    return {
+        ...user,
+        subscription: user.subscription || user.subscriptions?.[0] || createTrialSubscription(),
+        lastLogin: user.lastLogin || user.lastLoginAt || "",
+    };
 }

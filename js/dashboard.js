@@ -178,8 +178,8 @@ export function loadDashboard() {
 }
 
 function bindBaseActions() {
-    document.getElementById("logoutButton").addEventListener("click", () => {
-        logout();
+    document.getElementById("logoutButton").addEventListener("click", async () => {
+        await logout();
         window.location.href = "index.html";
     });
 

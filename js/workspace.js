@@ -53,8 +53,8 @@ function renderShell() {
 }
 
 function bindShellActions() {
-    document.getElementById("logoutButton").addEventListener("click", () => {
-        logout();
+    document.getElementById("logoutButton").addEventListener("click", async () => {
+        await logout();
         window.location.href = "index.html";
     });
 
