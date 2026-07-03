@@ -25,7 +25,7 @@ export function initStaffPage(context) {
 
 function bindStaffEvents() {
     if (isBound) return;
-    document.getElementById("createEmployeeButton").addEventListener("click", openEmployeeModal);
+    document.getElementById("createEmployeeButton").addEventListener("click", () => openEmployeeModal());
     document.getElementById("openShiftByPinButton").addEventListener("click", openShiftByPin);
     document.getElementById("staffSearch").addEventListener("input", renderStaffContent);
     document.getElementById("staffStatusFilter").addEventListener("change", renderStaffContent);
@@ -204,6 +204,7 @@ function renderPermissions() {
 }
 
 function openEmployeeModal(employee = null) {
+    employee = employee?.id ? employee : null;
     const positions = loadPositions(currentCompany.id);
     document.getElementById("staffModalTitle").textContent = employee ? "Изменить сотрудника" : "Добавить сотрудника";
     document.getElementById("staffModalBody").innerHTML = `
