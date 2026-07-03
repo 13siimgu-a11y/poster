@@ -16,7 +16,7 @@ import {
     sortCategories,
     updateCategory,
 } from "./categories.js";
-import { BUSINESS_TYPES, createCompany, loadCompany, updateCompany } from "./company.js";
+import { BUSINESS_TYPES, createCompanyApi, loadCompany, loadCurrentCompanyFromApi, updateCompany } from "./company.js";
 import { CURRENCIES, formatMoney } from "./currency.js";
 import { exportProducts } from "./export.js";
 import { filterProducts, sortProducts } from "./filters.js";
@@ -76,7 +76,7 @@ const viewTitles = {
     subscription: "Подписка",
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     currentUser = checkUser();
 
     if (!currentUser) {
@@ -92,7 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
     bindBaseActions();
     fillStaticSelects();
 
-    currentCompany = getUserCompany(currentUser);
+    currentCompany = await loadCurrentCompanyFromApi().catch(() => getUserCompany(currentUser));
+    currentUser = checkUser();
 
     if (!currentUser.companyId || !currentCompany) {
         openWizard();
@@ -105,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 export function loadDashboard() {
     document.getElementById("companyWizard").hidden = true;
     document.getElementById("dashboardShell").hidden = false;
-    currentCompany = loadCompany(currentUser.companyId);
+    currentCompany = currentCompany || loadCompany(currentUser.companyId);
     ensureDefaultCategories(currentCompany.id);
 
     renderCompanyShell();
@@ -342,7 +343,7 @@ async function submitWizard(event) {
     const formData = new FormData(form);
     const logo = await uploadLogo(formData.get("logo"));
 
-    currentCompany = createCompany(currentUser.id, {
+    currentCompany = await createCompanyApi({
         ...Object.fromEntries(formData.entries()),
         logo,
         pricesIncludeTax: formData.get("pricesIncludeTax") === "on",

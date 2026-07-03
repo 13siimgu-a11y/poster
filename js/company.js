@@ -1,4 +1,5 @@
 import { createLog } from "./logs.js";
+import { api } from "./apiClient.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 import { checkUser, persistCurrentUser } from "./auth.js";
 import { updateUser } from "./users.js";
@@ -106,6 +107,88 @@ export function createCompany(ownerId, companyData) {
 
     createLog("Создал заведение", { companyId: company.id, name: company.name, ownerId });
     return company;
+}
+
+export async function loadCurrentCompanyFromApi() {
+    const company = await api.get("/companies/current");
+    if (!company) {
+        return null;
+    }
+
+    return saveCompany(normalizeApiCompany(company));
+}
+
+export async function createCompanyApi(companyData) {
+    const company = await api.post("/companies", toApiCompanyPayload(companyData));
+    const normalizedCompany = saveCompany(normalizeApiCompany(company));
+    const currentUser = checkUser();
+
+    if (currentUser) {
+        persistCurrentUser({
+            ...currentUser,
+            companyId: normalizedCompany.id,
+        });
+    }
+
+    return normalizedCompany;
+}
+
+function toApiCompanyPayload(companyData) {
+    return {
+        name: companyData.name || "",
+        legalName: companyData.legalName || "",
+        businessType: companyData.businessType || "restaurant",
+        description: companyData.description || "",
+        logo: companyData.logo || "",
+        banner: companyData.banner || "",
+        address: {
+            country: companyData.country || "",
+            city: companyData.city || "",
+            street: companyData.street || "",
+            postalCode: companyData.postalCode || "",
+        },
+        contacts: {
+            phone: companyData.phone || "",
+            email: companyData.email || "",
+            website: companyData.website || "",
+            instagram: companyData.instagram || "",
+            facebook: companyData.facebook || "",
+            telegram: companyData.telegram || "",
+        },
+        settings: {
+            language: companyData.language || "ru",
+            timezone: companyData.timezone || "",
+            currency: companyData.currency || "USD",
+            dateFormat: companyData.dateFormat || "DD.MM.YYYY",
+            timeFormat: companyData.timeFormat || "24h",
+            tax: Number(companyData.tax ?? 18),
+            pricesIncludeTax: companyData.pricesIncludeTax !== false,
+            notifications: {
+                email: true,
+                telegram: false,
+                push: true,
+            },
+            workingHours: {
+                opensAt: "09:00",
+                closesAt: "22:00",
+                days: ["Пн", "Вт", "Ср", "Чт", "Пт"],
+            },
+        },
+    };
+}
+
+function normalizeApiCompany(company) {
+    return {
+        ...company,
+        address: company.address || {},
+        contacts: company.contacts || {},
+        settings: {
+            currency: "USD",
+            language: "ru",
+            ...(company.settings || {}),
+        },
+        qrCode: company.qrCode || generateQRCode(company),
+    };
 }
 
 export function updateCompany(companyId, patch) {
