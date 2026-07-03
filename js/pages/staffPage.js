@@ -213,7 +213,7 @@ function openEmployeeModal(employee = null) {
             <input name="username" placeholder="Username" value="${employee?.username || ""}">
             <input name="password" placeholder="Password" value="${employee?.password || ""}">
             <select name="positionId">${positions.map((position) => `<option value="${position.id}" ${idsEqual(employee?.positionId, position.id) ? "selected" : ""}>${helpers.escapeHtml(position.name)}</option>`).join("")}</select>
-            <select name="role"><option value="manager">manager</option><option value="cashier">cashier</option><option value="waiter">waiter</option><option value="kitchen">kitchen</option><option value="admin">admin</option></select>
+            <select name="role">${["manager", "cashier", "waiter", "bartender", "kitchen", "admin"].map((role) => `<option value="${role}" ${employee?.role === role ? "selected" : ""}>${role}</option>`).join("")}</select>
             <select name="status">${EMPLOYEE_STATUSES.map((status) => `<option value="${status}" ${employee?.status === status ? "selected" : ""}>${renderStatus(status)}</option>`).join("")}</select>
             <input name="pinCode" placeholder="PIN" value="${employee?.pinCode || ""}">
             <input name="hireDate" type="date" value="${employee?.hireDate || new Date().toISOString().slice(0, 10)}">

@@ -143,6 +143,7 @@ function toLocalRecord(companyId, resourceName, record, localId) {
 
 function toApiPayload(resourceName, localRecord) {
     const config = RESOURCES[resourceName];
+    const hadApiId = Boolean(localRecord._apiId);
     const payload = { ...localRecord };
     delete payload.id;
     delete payload._apiId;
@@ -216,7 +217,9 @@ function toApiPayload(resourceName, localRecord) {
         delete payload.birthDate;
         delete payload.gender;
         delete payload.address;
-        delete payload.password;
+        if (hadApiId || !payload.password) {
+            delete payload.password;
+        }
         if (!payload.positionId || !looksLikeApiId(payload.positionId)) {
             delete payload.positionId;
         }

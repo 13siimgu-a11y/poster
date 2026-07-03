@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcrypt";
 import { prisma } from "../../prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
@@ -8,6 +9,7 @@ import { createCompanyCrudRouter } from "../shared/crudRouter.js";
 import { emitCompanyEvent } from "../../sockets/index.js";
 
 export const operationsRouter = Router({ mergeParams: true });
+const EMPLOYEE_SALT_ROUNDS = 12;
 
 operationsRouter.use("/halls", createCompanyCrudRouter("hall"));
 operationsRouter.use("/tables", createCompanyCrudRouter("restaurantTable"));
@@ -35,7 +37,7 @@ operationsRouter.use("/purchase-orders", createCompanyCrudRouter("purchaseOrder"
     },
 }));
 operationsRouter.use("/supplier-returns", createCompanyCrudRouter("supplierReturn"));
-operationsRouter.use("/employees", createCompanyCrudRouter("employee"));
+operationsRouter.use("/employees", createEmployeesRouter());
 operationsRouter.use("/positions", createCompanyCrudRouter("position"));
 operationsRouter.use("/shifts", createCompanyCrudRouter("shift"));
 operationsRouter.use("/customers", createCompanyCrudRouter("customer", {
@@ -183,6 +185,170 @@ operationsRouter.post("/customers/:id/bonus/add", bonusOperation("add"));
 operationsRouter.post("/customers/:id/bonus/redeem", bonusOperation("redeem"));
 operationsRouter.post("/customers/:id/blacklist", customerBlacklist(true));
 operationsRouter.post("/customers/:id/restore", customerBlacklist(false));
+
+function createEmployeesRouter() {
+    const router = Router({ mergeParams: true });
+
+    router.use(requireAuth, requireCompanyAccess);
+
+    router.get("/", asyncHandler(async (request, response) => {
+        const employees = await prisma.employee.findMany({
+            where: { companyId: request.params.companyId },
+            orderBy: { createdAt: "desc" },
+        });
+        response.json(employees);
+    }));
+
+    router.post("/", asyncHandler(async (request, response) => {
+        const employee = await prisma.$transaction(async (tx) => {
+            const { userData, employeeData } = await buildEmployeeData(request);
+            let user = null;
+
+            if (userData) {
+                user = await tx.user.create({ data: userData });
+            }
+
+            return tx.employee.create({
+                data: {
+                    ...employeeData,
+                    userId: user?.id || null,
+                },
+            });
+        });
+
+        response.status(201).json(employee);
+    }));
+
+    router.get("/:id", asyncHandler(async (request, response) => {
+        const employee = await prisma.employee.findFirst({
+            where: { id: request.params.id, companyId: request.params.companyId },
+        });
+        if (!employee) {
+            throw new ApiError(404, "Employee not found");
+        }
+        response.json(employee);
+    }));
+
+    router.patch("/:id", asyncHandler(async (request, response) => {
+        const existing = await assertCompanyRecord("employee", request.params.companyId, request.params.id, "Employee not found");
+        const { userData, employeeData } = await buildEmployeeData(request, true, existing.userId);
+
+        const employee = await prisma.$transaction(async (tx) => {
+            let userId = existing.userId;
+
+            if (userData && existing.userId) {
+                await tx.user.update({
+                    where: { id: existing.userId },
+                    data: userData,
+                });
+            } else if (userData) {
+                const user = await tx.user.create({ data: userData });
+                userId = user.id;
+            }
+
+            return tx.employee.update({
+                where: { id: existing.id },
+                data: {
+                    ...employeeData,
+                    userId,
+                },
+            });
+        });
+
+        response.json(employee);
+    }));
+
+    router.delete("/:id", asyncHandler(async (request, response) => {
+        const existing = await assertCompanyRecord("employee", request.params.companyId, request.params.id, "Employee not found");
+        await prisma.$transaction(async (tx) => {
+            await tx.employee.delete({ where: { id: existing.id } });
+            if (existing.userId) {
+                await tx.user.update({
+                    where: { id: existing.userId },
+                    data: { status: "blocked" },
+                });
+            }
+        });
+        response.status(204).send();
+    }));
+
+    return router;
+}
+
+async function buildEmployeeData(request, isUpdate = false, currentUserId = null) {
+    const body = request.body;
+    const role = normalizeEmployeeRole(body.role);
+    const password = String(body.password || "").trim();
+    const username = String(body.username || "").trim();
+    const email = String(body.email || "").trim().toLowerCase()
+        || (username ? `${username.toLowerCase()}+${request.params.companyId}@employee.posposter.local` : "");
+    const shouldCreateUser = username && password;
+    let passwordHash = body.passwordHash;
+
+    if (password) {
+        passwordHash = await bcrypt.hash(password, EMPLOYEE_SALT_ROUNDS);
+    }
+
+    if (shouldCreateUser) {
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { username: { equals: username, mode: "insensitive" } },
+                    { email },
+                ],
+            },
+        });
+
+        if (existingUser && existingUser.id !== currentUserId) {
+            throw new ApiError(409, "User with this username or email already exists");
+        }
+    }
+
+    const employeeData = {
+        companyId: request.params.companyId,
+        positionId: body.positionId || null,
+        firstName: body.firstName || "Сотрудник",
+        lastName: body.lastName || "",
+        middleName: body.middleName || "",
+        username: username || null,
+        passwordHash: passwordHash || undefined,
+        email: body.email || null,
+        phone: body.phone || "",
+        role,
+        pinCode: body.pinCode || null,
+        avatar: body.avatar || "",
+        hireDate: body.hireDate ? new Date(body.hireDate) : undefined,
+        status: body.status || "working",
+        permissions: body.permissions || [],
+        payroll: body.payroll || { type: "hourly", rate: 0, fixed: 0, percent: 0 },
+    };
+
+    if (isUpdate) {
+        delete employeeData.companyId;
+        Object.keys(employeeData).forEach((key) => {
+            if (employeeData[key] === undefined) {
+                delete employeeData[key];
+            }
+        });
+    }
+
+    return {
+        employeeData,
+        userData: shouldCreateUser ? {
+            username,
+            email,
+            passwordHash,
+            role,
+            status: body.status === "blocked" ? "blocked" : "active",
+            companyId: request.params.companyId,
+        } : null,
+    };
+}
+
+function normalizeEmployeeRole(role) {
+    const allowedRoles = new Set(["admin", "manager", "cashier", "kitchen", "waiter", "storekeeper", "accountant", "bartender"]);
+    return allowedRoles.has(role) ? role : "waiter";
+}
 
 function createTableOrdersRouter() {
     const router = Router({ mergeParams: true });
