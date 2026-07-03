@@ -1,6 +1,7 @@
 import { checkUser, logout, setNotificationHandler } from "./auth.js";
 import { canShowAction } from "./accessPolicy.js";
-import { loadCompany } from "./company.js";
+import { loadCompany, loadCurrentCompanyFromApi } from "./company.js";
+import { syncCoreData } from "./apiPersistence.js";
 import { initAIChat } from "./aiChat.js";
 import { initStaffWorkspacePage } from "./pages/staffWorkspacePage.js";
 import { canAccessAdmin, shouldOpenWorkspace } from "./roles.js";
@@ -9,7 +10,7 @@ let currentUser = null;
 let currentCompany = null;
 let toastTimer = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     setNotificationHandler(showToast);
     currentUser = checkUser();
 
@@ -20,24 +21,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
     currentCompany = loadCompany(currentUser.companyId);
     if (!currentCompany) {
-        window.location.href = "dashboard.html";
+        currentCompany = await loadCurrentCompanyFromApi().catch(() => null);
+    }
+
+    if (!currentCompany) {
+        renderWorkspaceError("Заведение не найдено", "Попросите администратора проверить, что сотрудник привязан к заведению.");
         return;
     }
 
-    renderShell();
-    bindShellActions();
-    initStaffWorkspacePage({
-        company: currentCompany,
-        user: currentUser,
-        showToast,
-        escapeHtml,
+    await syncCoreData(currentCompany.id).catch(() => {
+        showToast("Не удалось загрузить данные из базы. Проверьте интернет и обновите страницу.", "error");
     });
-    initAIChat(() => ({
-        companyId: currentCompany.id,
-        user: currentUser,
-        currentView: "workspace",
-    }), { showToast });
+
+    try {
+        renderShell();
+        bindShellActions();
+        initStaffWorkspacePage({
+            company: currentCompany,
+            user: currentUser,
+            showToast,
+            escapeHtml,
+        });
+        initAIChat(() => ({
+            companyId: currentCompany.id,
+            user: currentUser,
+            currentView: "workspace",
+        }), { showToast });
+    } catch (error) {
+        console.error(error);
+        renderWorkspaceError("Не удалось открыть рабочее место", "Обновите страницу. Если ошибка повторится, войдите заново.");
+    }
 });
+
+function renderWorkspaceError(title, text) {
+    const root = document.getElementById("staffWorkspace");
+    if (!root) {
+        return;
+    }
+
+    root.innerHTML = `
+        <div class="panel empty-state empty-state--action">
+            <h2>${escapeHtml(title)}</h2>
+            <p>${escapeHtml(text)}</p>
+            <button class="primary-btn" type="button" id="workspaceRetryButton">Обновить</button>
+            <button class="secondary-btn" type="button" id="workspaceLogoutButton">Выйти</button>
+        </div>
+    `;
+
+    document.getElementById("workspaceRetryButton")?.addEventListener("click", () => window.location.reload());
+    document.getElementById("workspaceLogoutButton")?.addEventListener("click", async () => {
+        await logout();
+        window.location.href = "index.html";
+    });
+}
 
 function renderShell() {
     document.getElementById("workspaceCompanyName").textContent = currentCompany.name || "POS Poster";
@@ -70,6 +106,7 @@ function getRoleTitle() {
         cashier: "Кассир",
         waiter: "Официант",
         bartender: "Бармен",
+        barmen: "Бармен",
         admin: "Администратор",
         manager: "Управляющий",
         super_admin: "Super Admin",

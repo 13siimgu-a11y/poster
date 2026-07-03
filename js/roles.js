@@ -23,20 +23,29 @@ export const ROLE_LABELS = {
 
 export const WORKSPACE_ROLES = [ROLES.cashier, ROLES.waiter, ROLES.bartender];
 
+export function normalizeRole(role) {
+    const value = String(role || "").trim().toLowerCase();
+    if (["barmen", "bar", "бармен", "бар"].includes(value)) {
+        return ROLES.bartender;
+    }
+    return value;
+}
+
 export function isValidRole(role) {
-    return Object.values(ROLES).includes(role);
+    return Object.values(ROLES).includes(normalizeRole(role));
 }
 
 export function canAccessAdmin(user) {
-    return user?.role === ROLES.superAdmin;
+    return normalizeRole(user?.role) === ROLES.superAdmin;
 }
 
 export function shouldOpenWorkspace(user) {
-    return WORKSPACE_ROLES.includes(user?.role);
+    return WORKSPACE_ROLES.includes(normalizeRole(user?.role));
 }
 
 export function changeRole(userId, role) {
-    if (!isValidRole(role)) {
+    const normalizedRole = normalizeRole(role);
+    if (!isValidRole(normalizedRole)) {
         return null;
     }
 
@@ -49,14 +58,14 @@ export function changeRole(userId, role) {
 
     users[userIndex] = {
         ...users[userIndex],
-        role,
+        role: normalizedRole,
     };
 
     storage.set(STORAGE_KEYS.users, users);
     createLog("Изменил роль", {
         userId: users[userIndex].id,
         username: users[userIndex].username,
-        role,
+        role: normalizedRole,
     });
 
     return users[userIndex];

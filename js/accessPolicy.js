@@ -1,5 +1,5 @@
 import { ROLE_PERMISSIONS } from "./permissions.js";
-import { ROLES } from "./roles.js";
+import { ROLES, normalizeRole } from "./roles.js";
 
 export const VIEW_GROUPS = [
     {
@@ -83,11 +83,12 @@ export function getEffectivePermissions(user) {
         return [];
     }
 
-    if (user.role === ROLES.superAdmin) {
+    const role = normalizeRole(user.role);
+    if (role === ROLES.superAdmin) {
         return ["*"];
     }
 
-    return ROLE_PERMISSIONS[user.role] || [];
+    return ROLE_PERMISSIONS[role] || [];
 }
 
 export function getVisibleViews(user, company = null) {
@@ -95,13 +96,14 @@ export function getVisibleViews(user, company = null) {
         return [];
     }
 
-    const roleViews = ROLE_VIEW_MATRIX[user.role] || ROLE_VIEW_MATRIX[ROLES.manager];
+    const role = normalizeRole(user.role);
+    const roleViews = ROLE_VIEW_MATRIX[role] || ROLE_VIEW_MATRIX[ROLES.manager];
     const isOwner = company && Number(company.ownerId) === Number(user.id);
     const permissions = getEffectivePermissions(user);
     const canUseAI = permissions.includes("*") || permissions.includes("ai:use");
     const filterByPermissions = (views) => views.filter((view) => view !== "ai" || canUseAI);
 
-    if (isOwner || user.role === ROLES.admin || user.role === ROLES.manager || user.role === ROLES.superAdmin) {
+    if (isOwner || role === ROLES.admin || role === ROLES.manager || role === ROLES.superAdmin) {
         return filterByPermissions([...ROLE_VIEW_MATRIX[ROLES.manager]]);
     }
 
@@ -114,7 +116,7 @@ export function canShowView(user, view, company = null) {
 
 export function getDefaultView(user, company = null) {
     const visibleViews = getVisibleViews(user, company);
-    const preferredView = ROLE_DEFAULT_VIEW[user?.role] || "home";
+    const preferredView = ROLE_DEFAULT_VIEW[normalizeRole(user?.role)] || "home";
 
     if (visibleViews.includes(preferredView)) {
         return preferredView;
@@ -126,11 +128,12 @@ export function getDefaultView(user, company = null) {
 export function getHomeMetricPreset(user, company = null) {
     const isOwner = company && Number(company.ownerId) === Number(user?.id);
 
-    if (isOwner || user?.role === ROLES.admin || user?.role === ROLES.manager || user?.role === ROLES.superAdmin) {
+    const role = normalizeRole(user?.role);
+    if (isOwner || role === ROLES.admin || role === ROLES.manager || role === ROLES.superAdmin) {
         return MANAGER_HOME_PRESET;
     }
 
-    return ROLE_HOME_PRESETS[user?.role] || MANAGER_HOME_PRESET;
+    return ROLE_HOME_PRESETS[role] || MANAGER_HOME_PRESET;
 }
 
 export function canShowAction(user, permission) {
@@ -143,5 +146,5 @@ export function getRoleLabel(user, company = null) {
         return "Владелец";
     }
 
-    return ROLE_LABELS_UX[user?.role] || "Сотрудник";
+    return ROLE_LABELS_UX[normalizeRole(user?.role)] || "Сотрудник";
 }

@@ -1,7 +1,7 @@
 import { createDefaultPlans } from "./plans.js";
 import { loadEmployees } from "./employees.js";
 import { api } from "./apiClient.js";
-import { canAccessAdmin } from "./roles.js";
+import { canAccessAdmin, normalizeRole } from "./roles.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 import { checkSubscription } from "./subscriptions.js";
 import {
@@ -55,6 +55,7 @@ export function checkUser() {
         }
 
         const latestUser = getUserById(storedUser.id) || storedUser;
+        latestUser.role = normalizeRole(latestUser.role);
         const checkedUser = checkSubscription(latestUser);
         storage.set(STORAGE_KEYS.currentUser, checkedUser);
         return checkedUser;
@@ -200,7 +201,7 @@ function buildEmployeeSession(employee) {
         username: employee.username || employee.firstName || `employee-${employee.id}`,
         firstName: employee.firstName || "",
         email: "",
-        role: employee.role || "waiter",
+        role: normalizeRole(employee.role || "waiter"),
         status: employee.status || "working",
         permissions: employee.permissions || [],
         accountType: "employee",
@@ -227,6 +228,7 @@ export function replaceUsers(users) {
 function normalizeApiUser(user) {
     return {
         ...user,
+        role: normalizeRole(user.role),
         subscription: user.subscription || user.subscriptions?.[0] || createTrialSubscription(),
         lastLogin: user.lastLogin || user.lastLoginAt || "",
     };
