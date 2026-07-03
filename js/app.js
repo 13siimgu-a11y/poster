@@ -5,6 +5,7 @@ import {
     login,
     logout,
     register,
+    resetPassword,
     setNotificationHandler,
 } from "./auth.js";
 import { canAccessAdmin, shouldOpenWorkspace } from "./roles.js";
@@ -118,6 +119,7 @@ function bindModalTriggers() {
 function bindAuthForms() {
     const registerForm = document.getElementById("registerForm");
     const loginForm = document.getElementById("loginForm");
+    const resetPasswordForm = document.getElementById("resetPasswordForm");
 
     registerForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -145,6 +147,30 @@ function bindAuthForms() {
                 window.location.href = "dashboard.html";
             }
         }
+    });
+
+    resetPasswordForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = new FormData(resetPasswordForm).get("email");
+        const result = await resetPassword(String(email || ""));
+
+        if (!result) {
+            return;
+        }
+
+        loginForm.elements.username.value = result.username || result.email;
+        loginForm.elements.password.value = result.temporaryPassword;
+        document.getElementById("resetPasswordResult").hidden = false;
+        document.getElementById("resetPasswordResult").innerHTML = `
+            <strong>Новый пароль создан</strong>
+            <p>Мы уже вставили его в форму входа.</p>
+            <code>${escapeHtml(result.temporaryPassword)}</code>
+            <button class="btn btn--primary btn--full" type="button" id="openLoginAfterReset">Войти с новым паролем</button>
+        `;
+        document.getElementById("openLoginAfterReset").addEventListener("click", () => {
+            closeModal("resetPasswordModal");
+            openModal("loginModal");
+        });
     });
 }
 

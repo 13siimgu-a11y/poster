@@ -395,7 +395,22 @@
                 <label>Username<input type="text" name="username" autocomplete="username" required></label>
                 <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
                 <button class="btn btn--primary btn--full" type="submit">Войти</button>
+                <button class="btn btn--ghost btn--full" type="button" data-open-modal="resetPasswordModal">Забыли пароль?</button>
             </form>
+        </div>
+    </div>
+
+    <div class="modal" id="resetPasswordModal" aria-hidden="true">
+        <div class="modal__overlay" data-close-modal></div>
+        <div class="modal__content" role="dialog" aria-modal="true" aria-labelledby="resetPasswordTitle">
+            <button class="modal__close" type="button" aria-label="Закрыть окно" data-close-modal>×</button>
+            <h2 id="resetPasswordTitle">Сброс пароля</h2>
+            <p>Введите email аккаунта. Мы создадим новый пароль и сразу вставим его в форму входа.</p>
+            <form id="resetPasswordForm" class="form">
+                <label>Email<input type="email" name="email" autocomplete="email" required></label>
+                <button class="btn btn--primary btn--full" type="submit">Создать новый пароль</button>
+            </form>
+            <div class="reset-password-result" id="resetPasswordResult" hidden></div>
         </div>
     </div>
 

@@ -133,6 +133,20 @@ export async function login(formData) {
     }
 }
 
+export async function resetPassword(email) {
+    try {
+        const result = await api.post("/auth/reset-password", { email: email.trim().toLowerCase() });
+        notify("Новый пароль создан", "success");
+        return result;
+    } catch (error) {
+        const message = error.message?.toLowerCase().includes("not found")
+            ? "Пользователь с таким email не найден"
+            : error.message || "Не удалось сбросить пароль";
+        notify(message, "error");
+        return null;
+    }
+}
+
 function loginEmployee(username, password) {
     const employee = loadEmployees().find((item) => (
         item.username?.toLowerCase() === username.toLowerCase()

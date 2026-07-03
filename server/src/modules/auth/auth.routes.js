@@ -9,6 +9,7 @@ import {
     publicUser,
     refreshAuthToken,
     registerUser,
+    resetPasswordByEmail,
     revokeRefreshToken,
 } from "./auth.service.js";
 
@@ -24,6 +25,10 @@ const registerSchema = z.object({
 const loginSchema = z.object({
     usernameOrEmail: z.string().min(1),
     password: z.string().min(1),
+});
+
+const resetPasswordSchema = z.object({
+    email: z.string().email(),
 });
 
 function setRefreshCookie(response, refreshToken) {
@@ -48,6 +53,11 @@ authRouter.post("/login", validate(loginSchema), asyncHandler(async (request, re
     });
     setRefreshCookie(response, result.refreshToken);
     response.json({ accessToken: result.accessToken, user: result.user });
+}));
+
+authRouter.post("/reset-password", validate(resetPasswordSchema), asyncHandler(async (request, response) => {
+    const result = await resetPasswordByEmail(request.body.email);
+    response.json(result);
 }));
 
 authRouter.post("/refresh", asyncHandler(async (request, response) => {

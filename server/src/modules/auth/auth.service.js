@@ -78,6 +78,35 @@ export async function loginUser(data, meta = {}) {
     return issueAuthTokens(user, meta);
 }
 
+export async function resetPasswordByEmail(email) {
+    await ensureDefaultSuperAdmin();
+
+    const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+        throw new ApiError(404, "User with this email was not found");
+    }
+
+    const temporaryPassword = createTemporaryPassword();
+    const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+    });
+
+    return {
+        username: user.username,
+        email: user.email,
+        temporaryPassword,
+    };
+}
+
+function createTemporaryPassword() {
+    return `POS-${crypto.randomBytes(4).toString("hex")}`;
+}
+
 async function ensureDefaultSuperAdmin() {
     const existing = await prisma.user.findFirst({
         where: {

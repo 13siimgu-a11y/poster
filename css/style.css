@@ -57,6 +57,31 @@ button {
     cursor: pointer;
 }
 
+.reset-password-result {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.reset-password-result p {
+    color: var(--muted);
+}
+
+.reset-password-result code {
+    display: block;
+    padding: 12px;
+    border-radius: 12px;
+    background: #0F172A;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+    overflow-x: auto;
+}
+
 button,
 input,
 .feature-card,
