@@ -3348,12 +3348,16 @@ table tr:hover td,
 }
 
 .workspace-layout--quick {
-    grid-template-columns: minmax(380px, 1.05fr) minmax(320px, .8fr) minmax(380px, .9fr);
+    grid-template-columns: minmax(0, 1.25fr) minmax(380px, .75fr);
     align-items: start;
 }
 
 .workspace-layout--quick .workspace-unified {
     display: contents;
+}
+
+.workspace-table-first {
+    min-height: 60dvh;
 }
 
 .glass-panel,
@@ -4015,7 +4019,7 @@ button.is-rippling::after {
     }
 
     .workspace-layout--quick {
-        grid-template-columns: minmax(330px, 1fr) minmax(260px, .74fr) minmax(340px, .86fr);
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
     }
 
     .workspace-floor-grid {

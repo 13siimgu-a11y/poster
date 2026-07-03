@@ -214,16 +214,48 @@ function renderActiveScreen() {
 function renderUnifiedWorkspace() {
     const halls = loadFloor(currentCompany.id).filter((hall) => !hall.archived);
     const categories = loadCategories(currentCompany.id).filter((category) => category.active);
+    const order = getActiveOrder();
+
+    if (!order) {
+        return `
+            <section class="workspace-table-first panel glass-panel">
+                <div class="workspace-section-head">
+                    <div>
+                        <h3>1. Выберите столик</h3>
+                        <p>Нажмите на стол, заказ откроется сразу. После этого появятся категории и меню.</p>
+                    </div>
+                    <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек без стола</button>
+                </div>
+                <div class="workspace-hall-tabs">
+                    <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
+                    ${halls.map((hall) => `
+                        <button class="${idsEqual(activeHallId, hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
+                            ${escapeHtml(hall.name)}
+                        </button>
+                    `).join("")}
+                </div>
+                <div class="workspace-floor-grid">
+                    ${renderTableMap(halls)}
+                </div>
+            </section>
+            <aside class="workspace-order-card panel glass-panel" id="workspaceOrderPanel">
+                <div class="workspace-order-empty">
+                    <h3>Заказ еще не открыт</h3>
+                    <p>Сначала выберите столик. Потом появятся категории, товары и кнопка оплаты.</p>
+                </div>
+            </aside>
+        `;
+    }
 
     return `
         <section class="workspace-unified">
             <div class="workspace-unified__products panel glass-panel">
                 <div class="workspace-section-head">
                     <div>
-                        <h3>Быстрая продажа</h3>
-                        <p>Поиск, категории и товары. Одно нажатие добавляет позицию.</p>
+                        <h3>2. Выберите товары</h3>
+                        <p>Категории и меню для выбранного столика. Одно нажатие добавляет позицию.</p>
                     </div>
-                    <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек</button>
+                    <button class="secondary-btn" type="button" data-work-action="new-order">Сменить стол</button>
                 </div>
                 <div class="workspace-toolbar">
                     <div class="workspace-search">
@@ -245,26 +277,6 @@ function renderUnifiedWorkspace() {
                     `).join("")}
                 </div>
                 ${renderQuickProducts(24)}
-            </div>
-
-            <div class="workspace-unified__floor panel glass-panel">
-                <div class="workspace-section-head">
-                    <div>
-                        <h3>Столы</h3>
-                        <p>Выберите стол или работайте через быстрый чек.</p>
-                    </div>
-                </div>
-                <div class="workspace-hall-tabs">
-                    <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
-                    ${halls.map((hall) => `
-                        <button class="${idsEqual(activeHallId, hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
-                            ${escapeHtml(hall.name)}
-                        </button>
-                    `).join("")}
-                </div>
-                <div class="workspace-floor-grid workspace-floor-grid--compact">
-                    ${renderTableMap(halls)}
-                </div>
             </div>
         </section>
         <aside class="workspace-order-card panel glass-panel" id="workspaceOrderPanel">
@@ -447,10 +459,8 @@ function renderActiveOrder() {
         return `
             <div class="workspace-order-empty">
                 <h3>Выберите стол</h3>
-                <p>Откройте заказ и добавьте блюда.</p>
-                <button class="primary-btn" type="button" data-work-action="new-order">Новый заказ</button>
+                <p>После выбора столика здесь появится заказ.</p>
             </div>
-            ${renderQuickProducts()}
         `;
     }
 
@@ -492,13 +502,15 @@ function renderActiveOrder() {
             <span>Обслуживание</span><strong>${formatMoney(order.tax || 0, currentCompany.settings.currency)}</strong>
             <span class="workspace-order-summary__total">Финальная сумма</span><strong class="workspace-order-summary__total">${formatMoney(finalTotal, currentCompany.settings.currency)}</strong>
         </div>
-        <div class="workspace-payment-cta">
-            <button class="primary-btn" type="button" data-order-action="pay" ${order.items.length ? "" : "disabled"}>
-                Перейти к оплате
-                <strong>${formatMoney(finalTotal, currentCompany.settings.currency)}</strong>
-            </button>
-            <span>${order.items.length ? "Проверьте чек и выберите способ оплаты." : "Добавьте товары, чтобы перейти к оплате."}</span>
-        </div>
+        ${order.items.length ? `
+            <div class="workspace-payment-cta">
+                <button class="primary-btn" type="button" data-order-action="pay">
+                    Перейти к оплате
+                    <strong>${formatMoney(finalTotal, currentCompany.settings.currency)}</strong>
+                </button>
+                <span>Проверьте чек и выберите способ оплаты.</span>
+            </div>
+        ` : ""}
         <div class="workspace-order-actions workspace-order-actions--simple">
             <button class="secondary-btn" type="button" data-order-action="kitchen">На кухню</button>
             <button class="secondary-btn" type="button" data-order-action="print">Печать</button>
@@ -584,7 +596,7 @@ function openTableOrder(tableId) {
         return;
     }
 
-    if (!order && table.status === "free") {
+    if (!order && table.status === "free" && activeScreen !== STAFF_SCREENS.quick) {
         showNewOrderModal(table);
         return;
     }
