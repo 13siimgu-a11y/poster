@@ -5,6 +5,7 @@ import { canAccessAdmin } from "./roles.js";
 import { storage, STORAGE_KEYS } from "./storage.js";
 import { checkSubscription } from "./subscriptions.js";
 import {
+    createTrialSubscription,
     createUser,
     getUserById,
     initSuperAdmin,
