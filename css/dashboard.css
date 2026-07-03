@@ -4731,3 +4731,427 @@ button.is-rippling::after {
         padding-bottom: 90px;
     }
 }
+
+/* Waiter workstation redesign */
+.workspace-layout--quick {
+    grid-template-columns: minmax(360px, 1fr) minmax(260px, .72fr) minmax(340px, 420px);
+    gap: 14px;
+    align-items: start;
+}
+
+.workspace-layout--quick .workspace-table-first {
+    grid-column: 1 / -1;
+}
+
+.workspace-unified__products,
+.workspace-unified__floor,
+.workspace-order-card {
+    min-width: 0;
+}
+
+.workspace-menu-sticky {
+    position: sticky;
+    top: 10px;
+    z-index: 4;
+    display: grid;
+    gap: 12px;
+    margin: -4px -4px 12px;
+    padding: 4px;
+    background: color-mix(in srgb, var(--card) 82%, transparent);
+    backdrop-filter: blur(16px);
+}
+
+.workspace-search label {
+    font-size: 13px;
+}
+
+.workspace-search input {
+    min-height: 52px;
+    border-radius: 18px;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.workspace-category-rail {
+    flex-wrap: nowrap;
+    margin: 0;
+    padding: 2px 0 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.workspace-category-rail button {
+    min-width: 76px;
+    min-height: 58px;
+    border-radius: 999px;
+    padding: 10px 18px;
+    white-space: nowrap;
+    box-shadow: var(--ds-shadow-sm);
+}
+
+.workspace-products {
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.workspace-products button {
+    min-height: 138px;
+    padding: 12px;
+    border-radius: 20px;
+}
+
+.workspace-product-card__media {
+    height: 62px;
+    margin-bottom: 8px;
+}
+
+.workspace-products button strong {
+    font-size: 15px;
+    line-height: 1.2;
+}
+
+.workspace-products button b {
+    margin-top: 6px;
+    color: var(--primary);
+    font-size: 16px;
+}
+
+.workspace-table {
+    min-height: 132px;
+    border: 1px solid var(--border);
+    border-left-width: 8px;
+    background: color-mix(in srgb, var(--card) 88%, transparent) !important;
+}
+
+.workspace-table--free { border-left-color: #16A34A; }
+.workspace-table--arrived,
+.workspace-table--ordering { border-left-color: #2563EB; }
+.workspace-table--cooking { border-left-color: #F97316; }
+.workspace-table--payment { border-left-color: #EAB308; }
+.workspace-table--reserved { border-left-color: #9333EA; }
+.workspace-table--attention { border-left-color: #94A3B8; }
+
+.workspace-table__status {
+    display: none;
+}
+
+.workspace-table__label {
+    background: transparent;
+    padding: 0;
+    color: var(--muted) !important;
+}
+
+.workspace-floor-grid--compact {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    min-height: auto;
+}
+
+.workspace-order-card {
+    padding: 16px;
+}
+
+.workspace-sheet-handle {
+    display: none;
+}
+
+.workspace-order-head {
+    padding-top: 0;
+}
+
+.workspace-order-head h3 {
+    margin: 2px 0;
+}
+
+.workspace-order-items {
+    display: grid;
+    gap: 8px;
+}
+
+.workspace-order-item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+    padding: 10px 0;
+}
+
+.workspace-order-item > button {
+    min-height: 48px;
+}
+
+.workspace-qty button {
+    width: 48px;
+    min-height: 48px;
+    padding: 0;
+}
+
+.workspace-order-summary {
+    margin-top: 4px;
+    padding: 12px 0;
+}
+
+.workspace-payment-cta {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+}
+
+.workspace-payment-cta span {
+    display: none;
+}
+
+.workspace-payment-cta .primary-btn {
+    min-height: 64px;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+}
+
+.workspace-order-actions--simple {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 10px;
+}
+
+.workspace-order-actions--simple button {
+    min-height: 52px;
+}
+
+.payment-total-card {
+    text-align: center;
+}
+
+.payment-total-card span {
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.payment-total-card strong {
+    font-size: clamp(34px, 6vw, 58px);
+}
+
+.workspace-pay-options button {
+    min-height: 112px;
+    font-size: 18px;
+}
+
+.workspace-pay-options button span {
+    font-size: 34px;
+}
+
+.workspace-pay-submit {
+    min-height: 72px;
+    border-radius: 20px;
+    font-size: 18px;
+    text-transform: uppercase;
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+    .workspace-layout--quick {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+    }
+
+    .workspace-layout--quick .workspace-unified__products,
+    .workspace-layout--quick .workspace-unified__floor {
+        grid-column: 1;
+    }
+
+    .workspace-layout--quick .workspace-unified__floor {
+        grid-row: 1;
+    }
+
+    .workspace-layout--quick .workspace-unified__products {
+        grid-row: 2;
+    }
+
+    .workspace-layout--quick .workspace-order-card {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+
+    .workspace-products {
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .staff-workspace {
+        padding-bottom: 96px;
+    }
+
+    .worktop {
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .worktop__actions,
+    .workspace-notices,
+    .workspace-unified__floor,
+    .workspace-order-empty {
+        display: none;
+    }
+
+    .workspace-layout--quick {
+        display: block;
+    }
+
+    .workspace-table-first,
+    .workspace-unified__products {
+        padding: 12px;
+        border-radius: 22px;
+    }
+
+    .workspace-section-head {
+        margin-bottom: 10px;
+    }
+
+    .workspace-section-head h3 {
+        font-size: 20px;
+    }
+
+    .workspace-section-head p {
+        display: none;
+    }
+
+    .workspace-hall-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    .workspace-hall-tabs button,
+    .workspace-category-rail button {
+        min-height: 52px;
+    }
+
+    .workspace-floor-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .workspace-table {
+        min-height: 98px;
+        border-radius: 18px;
+        padding: 12px;
+    }
+
+    .workspace-products {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding-bottom: 220px;
+    }
+
+    .workspace-products button {
+        min-height: 124px;
+    }
+
+    .workspace-product-card__media {
+        height: 50px;
+    }
+
+    .workspace-order-card {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: 84px;
+        z-index: 55;
+        display: grid;
+        max-height: min(68dvh, 560px);
+        overflow: auto;
+        border-radius: 26px 26px 18px 18px;
+        box-shadow: 0 -22px 54px rgba(15, 23, 42, .24);
+    }
+
+    .workspace-order-card--empty {
+        display: none;
+    }
+
+    .workspace-order-card--peek {
+        max-height: 188px;
+    }
+
+    .workspace-order-card--peek .workspace-order-items,
+    .workspace-order-card--peek .workspace-order-summary,
+    .workspace-order-card--peek .workspace-order-actions {
+        display: none;
+    }
+
+    .workspace-order-card--full {
+        top: 12px;
+        max-height: calc(100dvh - 108px);
+    }
+
+    .workspace-sheet-handle {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin: -6px -6px 8px;
+        padding: 6px;
+        border-radius: 18px;
+        background: color-mix(in srgb, var(--card) 92%, transparent);
+        backdrop-filter: blur(12px);
+    }
+
+    .workspace-sheet-handle button {
+        min-height: 42px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--bg-soft);
+        color: var(--text);
+        font-weight: 800;
+    }
+
+    .workspace-order-head,
+    .workspace-order-item {
+        grid-template-columns: 1fr auto;
+    }
+
+    .workspace-order-item b {
+        justify-self: end;
+    }
+
+    .workspace-order-item > button {
+        grid-column: span 1;
+    }
+
+    .workspace-payment-cta {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        margin-top: 10px;
+        padding-top: 8px;
+        background: linear-gradient(180deg, transparent, var(--card) 20%);
+    }
+
+    .workspace-payment-cta .primary-btn {
+        min-height: 68px;
+    }
+
+    .workspace-order-actions--simple {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .workspace-order-actions--simple button {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
+
+    .workspace-pay-options {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-pay-options button {
+        min-height: 84px;
+    }
+}
+
+@media (max-width: 420px) {
+    .workspace-products {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-order-card {
+        left: 6px;
+        right: 6px;
+    }
+}

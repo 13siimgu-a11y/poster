@@ -29,12 +29,12 @@ const STAFF_SCREENS = {
 
 const TABLE_STATE_META = {
     free: { label: "Свободен", icon: "●", tone: "free" },
-    arrived: { label: "Гости пришли", icon: "●", tone: "arrived" },
-    ordering: { label: "Заказ оформляется", icon: "●", tone: "ordering" },
-    cooking: { label: "Заказ готовится", icon: "●", tone: "cooking" },
-    payment: { label: "Ожидает оплату", icon: "●", tone: "payment" },
-    attention: { label: "Требуется внимание", icon: "●", tone: "attention" },
-    reserved: { label: "Забронирован", icon: "●", tone: "reserved" },
+    arrived: { label: "Заказ открыт", icon: "●", tone: "arrived" },
+    ordering: { label: "Заказ открыт", icon: "●", tone: "ordering" },
+    cooking: { label: "Готовится", icon: "●", tone: "cooking" },
+    payment: { label: "Ждет оплату", icon: "●", tone: "payment" },
+    attention: { label: "Уборка", icon: "●", tone: "attention" },
+    reserved: { label: "Бронь", icon: "●", tone: "reserved" },
 };
 
 let currentCompany = null;
@@ -52,6 +52,7 @@ let inventorySearch = "";
 let reportPeriod = "24h";
 let customReportRange = null;
 let isBound = false;
+let orderSheetState = "peek";
 
 export function initStaffWorkspacePage(context) {
     currentCompany = context.company;
@@ -221,10 +222,9 @@ function renderUnifiedWorkspace() {
             <section class="workspace-table-first panel glass-panel">
                 <div class="workspace-section-head">
                     <div>
-                        <h3>1. Выберите столик</h3>
-                        <p>Нажмите на стол, заказ откроется сразу. После этого появятся категории и меню.</p>
+                        <h3>Выберите стол</h3>
+                        <p>Нажмите на стол, заказ откроется сразу.</p>
                     </div>
-                    <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек без стола</button>
                 </div>
                 <div class="workspace-hall-tabs">
                     <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
@@ -238,37 +238,17 @@ function renderUnifiedWorkspace() {
                     ${renderTableMap(halls)}
                 </div>
             </section>
-            <aside class="workspace-order-card panel glass-panel" id="workspaceOrderPanel">
-                <div class="workspace-order-empty">
-                    <h3>Заказ еще не открыт</h3>
-                    <p>Сначала выберите столик. Потом появятся категории, товары и кнопка оплаты.</p>
-                </div>
-            </aside>
         `;
     }
 
     return `
-        <section class="workspace-unified">
-            <div class="workspace-unified__products panel glass-panel">
-                <div class="workspace-section-head">
-                    <div>
-                        <h3>2. Выберите товары</h3>
-                        <p>Категории и меню для выбранного столика. Одно нажатие добавляет позицию.</p>
-                    </div>
-                    <button class="secondary-btn" type="button" data-work-action="new-order">Сменить стол</button>
+        <section class="workspace-unified__products panel glass-panel">
+            <div class="workspace-menu-sticky">
+                <div class="workspace-search">
+                    <label for="workspaceProductSearch">Поиск</label>
+                    <input id="workspaceProductSearch" type="search" placeholder="Найти товар" value="${escapeHtml(productSearch)}">
                 </div>
-                <div class="workspace-toolbar">
-                    <div class="workspace-search">
-                        <label for="workspaceProductSearch">Поиск товара</label>
-                        <input id="workspaceProductSearch" type="search" placeholder="Название, SKU или категория" value="${escapeHtml(productSearch)}">
-                    </div>
-                    <div class="workspace-product-tabs">
-                        <button class="${activeProductFilter === "all" ? "is-active" : ""}" type="button" data-product-filter="all">Все</button>
-                        <button class="${activeProductFilter === "popular" ? "is-active" : ""}" type="button" data-product-filter="popular">Частые</button>
-                        <button class="${activeProductFilter === "favorites" ? "is-active" : ""}" type="button" data-product-filter="favorites">Любимые</button>
-                    </div>
-                </div>
-                <div class="workspace-category-rail">
+                <div class="workspace-category-rail" aria-label="Категории">
                     <button class="${activeProductCategoryId === "" ? "is-active" : ""}" type="button" data-product-category="">Все</button>
                     ${categories.map((category) => `
                         <button class="${idsEqual(activeProductCategoryId, category.id) ? "is-active" : ""}" type="button" data-product-category="${category.id}">
@@ -276,10 +256,29 @@ function renderUnifiedWorkspace() {
                         </button>
                     `).join("")}
                 </div>
-                ${renderQuickProducts(24)}
+            </div>
+            ${renderQuickProducts(36)}
+        </section>
+        <section class="workspace-unified__floor panel glass-panel">
+            <div class="workspace-section-head">
+                <div>
+                    <h3>Столы</h3>
+                    <p>Текущий стол выделен.</p>
+                </div>
+            </div>
+            <div class="workspace-hall-tabs">
+                <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
+                ${halls.map((hall) => `
+                    <button class="${idsEqual(activeHallId, hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
+                        ${escapeHtml(hall.name)}
+                    </button>
+                `).join("")}
+            </div>
+            <div class="workspace-floor-grid workspace-floor-grid--compact">
+                ${renderTableMap(halls)}
             </div>
         </section>
-        <aside class="workspace-order-card panel glass-panel" id="workspaceOrderPanel">
+        <aside class="workspace-order-card workspace-order-card--${orderSheetState} ${order.items.length ? "" : "workspace-order-card--empty"} panel glass-panel" id="workspaceOrderPanel">
             ${renderActiveOrder()}
         </aside>
     `;
@@ -304,7 +303,7 @@ function renderFloorWorkspace() {
             <div class="workspace-hall-tabs">
                 <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
                 ${halls.map((hall) => `
-                    <button class="${Number(activeHallId) === Number(hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
+                    <button class="${idsEqual(activeHallId, hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
                         ${escapeHtml(hall.name)}
                     </button>
                 `).join("")}
@@ -373,7 +372,7 @@ function getTableState(table, order, reservation) {
         return TABLE_STATE_META.free;
     }
 
-    const kitchenOrder = loadKitchenOrders(currentCompany.id).find((item) => Number(item.orderId) === Number(order.id));
+    const kitchenOrder = loadKitchenOrders(currentCompany.id).find((item) => idsEqual(item.orderId, order.id));
     if (table.status === "payment" || order.status === "payment") {
         return TABLE_STATE_META.payment;
     }
@@ -467,6 +466,11 @@ function renderActiveOrder() {
     const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, order.tableId));
     const finalTotal = Math.max(0, Number(order.total || 0));
     return `
+        <div class="workspace-sheet-handle" aria-label="Размер заказа">
+            <button type="button" data-order-sheet="peek">Свернуть</button>
+            <button type="button" data-order-sheet="open">Заказ</button>
+            <button type="button" data-order-sheet="full">Полностью</button>
+        </div>
         <div class="workspace-order-head">
             <div>
                 <span>${escapeHtml(table?.name || "Стол")}</span>
@@ -475,7 +479,6 @@ function renderActiveOrder() {
             </div>
             <strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
         </div>
-        ${renderQuickProducts()}
         <div class="workspace-order-items">
             ${order.items.length ? order.items.map((item) => `
                 <article class="workspace-order-item">
@@ -490,9 +493,8 @@ function renderActiveOrder() {
                         <button type="button" data-order-item-action="plus" data-order-item="${item.id}">+</button>
                     </div>
                     <b>${formatMoney(item.total, currentCompany.settings.currency)}</b>
-                    <button type="button" data-order-item-action="comment" data-order-item="${item.id}">Коммент.</button>
-                    <button type="button" data-order-item-action="modifier" data-order-item="${item.id}">Мод.</button>
-                    <button type="button" data-order-item-action="remove" data-order-item="${item.id}">×</button>
+                    <button type="button" data-order-item-action="comment" data-order-item="${item.id}">Комментарий</button>
+                    <button class="danger-btn" type="button" data-order-item-action="remove" data-order-item="${item.id}">Удалить</button>
                 </article>
             `).join("") : "<p class=\"empty-check\">Добавьте блюдо.</p>"}
         </div>
@@ -514,8 +516,8 @@ function renderActiveOrder() {
         <div class="workspace-order-actions workspace-order-actions--simple">
             <button class="secondary-btn" type="button" data-order-action="kitchen">На кухню</button>
             <button class="secondary-btn" type="button" data-order-action="print">Печать</button>
-            ${canShowAction(currentUser, "discounts:manage") ? '<button class="secondary-btn" type="button" data-order-action="discount">Скидка</button>' : ""}
-            <button class="secondary-btn" type="button" data-order-action="more">Ещё</button>
+            ${canShowAction(currentUser, "discounts:manage") ? '<button class="secondary-btn" type="button" data-order-action="discount">%</button>' : ""}
+            <button class="secondary-btn" type="button" data-order-action="more">•••</button>
         </div>
     `;
 }
@@ -552,15 +554,16 @@ function getProductIcon(product, category) {
 
 function filterWorkspaceProducts() {
     const query = productSearch.trim().toLowerCase();
+    const productFilter = activeScreen === STAFF_SCREENS.quick ? "all" : activeProductFilter;
     const categories = loadCategories(currentCompany.id);
     const categoryById = new Map(categories.map((category) => [String(category.id), category]));
     return getAvailablePosProducts(currentCompany.id).filter((product) => {
         const category = categoryById.get(String(product.categoryId));
         const favoriteNames = ["капучино", "эспрессо", "латте", "бургер", "картофель фри", "кола"];
         const isFavorite = product.popular || product.recommended || favoriteNames.includes(product.name.toLowerCase());
-        const matchesFilter = activeProductFilter === "all"
-            || (activeProductFilter === "popular" && product.popular)
-            || (activeProductFilter === "favorites" && isFavorite);
+        const matchesFilter = productFilter === "all"
+            || (productFilter === "popular" && product.popular)
+            || (productFilter === "favorites" && isFavorite);
         const matchesCategory = !activeProductCategoryId || idsEqual(product.categoryId, activeProductCategoryId);
         const matchesQuery = !query
             || product.name.toLowerCase().includes(query)
@@ -571,6 +574,13 @@ function filterWorkspaceProducts() {
 }
 
 function bindOrderPanelActions() {
+    document.querySelectorAll("[data-order-sheet]").forEach((button) => {
+        button.addEventListener("click", () => {
+            orderSheetState = button.dataset.orderSheet;
+            renderActiveScreen();
+        });
+    });
+
     document.querySelectorAll("[data-add-work-product]").forEach((button) => {
         button.addEventListener("click", () => addProductToOrder(button.dataset.addWorkProduct));
     });
@@ -610,6 +620,7 @@ function openTableOrder(tableId) {
     }
 
     activeOrderId = order.id;
+    orderSheetState = "open";
     renderActiveScreen();
 }
 
@@ -633,6 +644,7 @@ function showNewOrderModal(table) {
             comments: data.comments,
         });
         activeOrderId = order.id;
+        orderSheetState = "open";
         closeWorkspaceModal();
         renderActiveScreen();
         toast("Заказ создан");
@@ -641,7 +653,7 @@ function showNewOrderModal(table) {
 
 function addProductToOrder(productId) {
     let order = getActiveOrder();
-    const product = loadProducts(currentCompany.id).find((item) => Number(item.id) === Number(productId));
+    const product = loadProducts(currentCompany.id).find((item) => idsEqual(item.id, productId));
 
     if (!product) {
         return;
@@ -668,6 +680,7 @@ function addProductToOrder(productId) {
     });
     changeTableStatus(order.tableId, "occupied");
     activeOrderId = updated.id;
+    orderSheetState = "peek";
     renderActiveScreen();
 }
 
@@ -719,7 +732,7 @@ function getOrCreateQuickSaleTable() {
 
 function handleOrderItemAction(action, itemId) {
     const order = getActiveOrder();
-    const item = order?.items.find((orderItem) => Number(orderItem.id) === Number(itemId));
+    const item = order?.items.find((orderItem) => idsEqual(orderItem.id, itemId));
 
     if (!order || !item) {
         return;
@@ -737,7 +750,7 @@ function handleOrderItemAction(action, itemId) {
 
     const nextItems = order.items
         .map((orderItem) => {
-            if (Number(orderItem.id) !== Number(itemId)) {
+            if (!idsEqual(orderItem.id, itemId)) {
                 return orderItem;
             }
 
@@ -753,7 +766,7 @@ function handleOrderItemAction(action, itemId) {
                 total: (Number(orderItem.price || 0) + modifierTotal) * quantity,
             };
         })
-        .filter((orderItem) => action !== "remove" || Number(orderItem.id) !== Number(itemId));
+        .filter((orderItem) => action !== "remove" || !idsEqual(orderItem.id, itemId));
 
     updateOrder(order.id, { items: nextItems, historyAction: "Изменены позиции заказа" });
     renderActiveScreen();
@@ -772,7 +785,7 @@ function openItemCommentModal(order, item) {
         event.preventDefault();
         const comment = new FormData(event.currentTarget).get("comment");
         updateOrder(order.id, {
-            items: order.items.map((orderItem) => Number(orderItem.id) === Number(item.id) ? { ...orderItem, comment } : orderItem),
+            items: order.items.map((orderItem) => idsEqual(orderItem.id, item.id) ? { ...orderItem, comment } : orderItem),
             historyAction: "Добавлен комментарий",
         });
         closeWorkspaceModal();
@@ -796,7 +809,7 @@ function openModifierModal(order, item) {
         const modifier = { id: Date.now(), name: data.name, price: Number(data.price || 0) };
         updateOrder(order.id, {
             items: order.items.map((orderItem) => {
-                if (Number(orderItem.id) !== Number(item.id)) {
+                if (!idsEqual(orderItem.id, item.id)) {
                     return orderItem;
                 }
 
@@ -843,6 +856,8 @@ function handleOrderAction(action) {
         confirmCloseOrder(order);
     } else if (action === "cancel") {
         confirmCancelOrder(order);
+    } else if (action === "history") {
+        openOrderHistory(order);
     } else if (action === "more") {
         openMoreOrderActions(order);
     }
@@ -856,6 +871,7 @@ function openMoreOrderActions(order) {
             <button class="secondary-btn" type="button" data-more-order-action="split">Разделить чек</button>
             <button class="secondary-btn" type="button" data-more-order-action="merge">Объединить</button>
             <button class="secondary-btn" type="button" data-more-order-action="close">Закрыть без оплаты</button>
+            <button class="secondary-btn" type="button" data-more-order-action="history">История заказа</button>
             <button class="secondary-btn danger-btn" type="button" data-more-order-action="cancel">Отменить заказ</button>
         </div>
     `);
@@ -866,6 +882,21 @@ function openMoreOrderActions(order) {
             handleOrderAction(button.dataset.moreOrderAction);
         });
     });
+}
+
+function openOrderHistory(order) {
+    const rows = (order.history || []).slice().reverse().map((item) => `
+        <div class="workspace-detail-row">
+            <span>${escapeHtml(item.action || "Событие")}</span>
+            <small>${formatDateTime(item.createdAt)}</small>
+        </div>
+    `).join("");
+
+    openWorkspaceModal("История заказа", `
+        <div class="workspace-list">
+            ${rows || "<p class=\"empty-check\">Истории пока нет.</p>"}
+        </div>
+    `);
 }
 
 function openPaymentModal(order) {
@@ -1040,7 +1071,7 @@ function openTransferModal(order) {
 }
 
 function openMergeModal(order) {
-    const orders = loadOrders(currentCompany.id, "opened").filter((item) => Number(item.id) !== Number(order.id));
+    const orders = loadOrders(currentCompany.id, "opened").filter((item) => !idsEqual(item.id, order.id));
     openWorkspaceModal("Объединить заказы", `
         <form class="workspace-form" id="mergeForm">
             <label>Заказ для объединения
@@ -1055,7 +1086,7 @@ function openMergeModal(order) {
     document.getElementById("mergeForm").addEventListener("submit", (event) => {
         event.preventDefault();
         const targetId = new FormData(event.currentTarget).get("orderId");
-        const target = orders.find((item) => Number(item.id) === Number(targetId));
+        const target = orders.find((item) => idsEqual(item.id, targetId));
         if (!target) return;
         updateOrder(order.id, {
             items: [...order.items, ...target.items],
@@ -1084,8 +1115,8 @@ function openSplitModal(order) {
 
     document.getElementById("splitForm").addEventListener("submit", (event) => {
         event.preventDefault();
-        const selectedIds = new FormData(event.currentTarget).getAll("items").map(Number);
-        const selectedItems = order.items.filter((item) => selectedIds.includes(Number(item.id)));
+        const selectedIds = new FormData(event.currentTarget).getAll("items");
+        const selectedItems = order.items.filter((item) => selectedIds.some((id) => idsEqual(id, item.id)));
         if (!selectedItems.length) {
             toast("Выберите позиции");
             return;
@@ -1099,7 +1130,7 @@ function openSplitModal(order) {
             comments: `Разделен из ${order.number}`,
         });
         updateOrder(order.id, {
-            items: order.items.filter((item) => !selectedIds.includes(Number(item.id))),
+            items: order.items.filter((item) => !selectedIds.some((id) => idsEqual(id, item.id))),
             historyAction: `Разделен чек ${newOrder.number}`,
         });
         activeOrderId = newOrder.id;
@@ -1723,7 +1754,7 @@ function getRoleTitle() {
 }
 
 function getWaiterName(waiterId) {
-    return Number(waiterId) === Number(currentUser.id) ? currentUser.username : `Сотрудник #${waiterId}`;
+    return idsEqual(waiterId, currentUser.id) ? currentUser.username : `Сотрудник #${waiterId}`;
 }
 
 function getOrderAge(createdAt) {
