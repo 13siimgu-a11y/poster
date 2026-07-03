@@ -179,6 +179,9 @@ function renderActiveScreen() {
 
     if (activeScreen === STAFF_SCREENS.quick) {
         layout.classList.add("workspace-layout--quick");
+        if (getActiveOrder()) {
+            layout.classList.add("workspace-layout--order");
+        }
         layout.innerHTML = renderUnifiedWorkspace();
         bindUnifiedWorkspace();
         return;
@@ -250,6 +253,9 @@ function renderUnifiedWorkspace() {
 
     return `
         <section class="workspace-unified__products panel glass-panel">
+            <button class="workspace-back-to-tables" type="button" data-work-action="new-order">
+                ← Назад к выбору стола
+            </button>
             <div class="workspace-menu-sticky">
                 <div class="workspace-search">
                     <label for="workspaceProductSearch">Поиск</label>
@@ -265,25 +271,6 @@ function renderUnifiedWorkspace() {
                 </div>
             </div>
             ${renderQuickProducts(36)}
-        </section>
-        <section class="workspace-unified__floor panel glass-panel">
-            <div class="workspace-section-head">
-                <div>
-                    <h3>Столы</h3>
-                    <p>Текущий стол выделен.</p>
-                </div>
-            </div>
-            <div class="workspace-hall-tabs">
-                <button class="${activeHallId === "all" ? "is-active" : ""}" type="button" data-work-hall="all">Все</button>
-                ${halls.map((hall) => `
-                    <button class="${idsEqual(activeHallId, hall.id) ? "is-active" : ""}" type="button" data-work-hall="${hall.id}">
-                        ${escapeHtml(hall.name)}
-                    </button>
-                `).join("")}
-            </div>
-            <div class="workspace-floor-grid workspace-floor-grid--compact">
-                ${renderTableMap(halls)}
-            </div>
         </section>
         <aside class="workspace-order-card workspace-order-card--${orderSheetState} ${order.items.length ? "" : "workspace-order-card--empty"} panel glass-panel" id="workspaceOrderPanel">
             ${renderActiveOrder()}
@@ -1679,6 +1666,8 @@ function handleWorkspaceAction(action) {
 
     if (action === "new-order") {
         activeScreen = STAFF_SCREENS.quick;
+        activeOrderId = null;
+        orderSheetState = "peek";
         renderWorkspace();
         toast("Выберите свободный стол");
     }

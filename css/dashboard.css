@@ -4739,6 +4739,10 @@ button.is-rippling::after {
     align-items: start;
 }
 
+.workspace-layout--quick.workspace-layout--order {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+}
+
 .workspace-layout--quick .workspace-table-first {
     grid-column: 1 / -1;
 }
@@ -4839,6 +4843,21 @@ button.is-rippling::after {
 .workspace-quick-sale-card span {
     color: rgba(255, 255, 255, .82);
     font-weight: 800;
+}
+
+.workspace-back-to-tables {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    margin: 0 0 12px;
+    padding: 12px 18px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--text);
+    font-weight: 900;
+    box-shadow: var(--ds-shadow-sm);
 }
 
 .workspace-table {
@@ -4973,6 +4992,10 @@ button.is-rippling::after {
         grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
     }
 
+    .workspace-layout--quick.workspace-layout--order {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+    }
+
     .workspace-layout--quick .workspace-unified__products,
     .workspace-layout--quick .workspace-unified__floor {
         grid-column: 1;
@@ -4989,6 +5012,10 @@ button.is-rippling::after {
     .workspace-layout--quick .workspace-order-card {
         grid-column: 2;
         grid-row: 1 / span 2;
+    }
+
+    .workspace-layout--quick.workspace-layout--order .workspace-order-card {
+        grid-row: 1;
     }
 
     .workspace-products {
