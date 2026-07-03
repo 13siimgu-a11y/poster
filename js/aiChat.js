@@ -34,18 +34,23 @@ export async function sendAIMessage(message) {
     renderAIChat();
 
     if (isConfirmation(message) && pendingAction) {
-        const actionResult = executeAction(pendingAction, context);
-        const count = Array.isArray(actionResult) ? actionResult.length : actionResult ? 1 : 0;
+        let actionResult = null;
+        try {
+            actionResult = await executeAction(pendingAction, context);
+        } catch (error) {
+            actionResult = { error: error.message || "Не удалось выполнить действие." };
+        }
+        const count = getResultCount(actionResult);
         saveConversation(context.companyId, context.user.id, {
             role: "assistant",
-            content: count
-                ? `Готово. Я выполнил действие: ${pendingAction.description || pendingAction.type}. Создано/обновлено объектов: ${count}.`
-                : "Не удалось выполнить ожидающее действие.",
+            content: getActionMessage(actionResult, pendingAction, count),
             actions: actionResult ? [actionResult] : [],
         });
         pendingAction = null;
         clearPendingAction(context);
         isSending = false;
+        helpers.showToast?.(count ? "AI выполнил действие" : "AI не смог выполнить действие");
+        await helpers.refreshData?.();
         renderAIChat();
         return;
     }
@@ -58,13 +63,21 @@ export async function sendAIMessage(message) {
             pendingAction = response.action;
             savePendingAction(context, pendingAction);
         } else if (response.action) {
-            actionResult = executeAction(response.action, context);
+            actionResult = await executeAction(response.action, context);
+            helpers.showToast?.("AI выполнил действие");
+            await helpers.refreshData?.();
         }
 
         saveConversation(context.companyId, context.user.id, {
             role: "assistant",
             content: response.content,
             actions: actionResult ? [actionResult] : [],
+        });
+    } catch (error) {
+        saveConversation(context.companyId, context.user.id, {
+            role: "assistant",
+            content: error.message || "Не удалось выполнить запрос AI. Попробуйте ещё раз.",
+            actions: [],
         });
     } finally {
         isSending = false;
@@ -98,6 +111,22 @@ function clearPendingAction(context) {
 function isConfirmation(message) {
     const normalized = message.trim().toLowerCase();
     return ["да", "подтверждаю", "подтвердить", "создай", "добавь", "ок", "ok"].includes(normalized);
+}
+
+function getResultCount(result) {
+    if (!result || result.error) return 0;
+    if (Array.isArray(result)) return result.filter((item) => item && !item.error).length;
+    return 1;
+}
+
+function getActionMessage(result, action, count) {
+    if (result?.error) {
+        return `Не удалось выполнить действие: ${result.error}`;
+    }
+
+    return count
+        ? `Готово. ${action.description || action.type}. Создано/обновлено объектов: ${count}. Данные сохранены в базе и будут видны на других устройствах.`
+        : "Не удалось выполнить ожидающее действие.";
 }
 
 function bindAIEvents() {

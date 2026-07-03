@@ -171,7 +171,7 @@ export function loadDashboard() {
         companyId: currentCompany.id,
         user: currentUser,
         currentView,
-    }), { showToast, escapeHtml });
+    }), { showToast, escapeHtml, refreshData: refreshDashboardData });
     renderMenu();
     renderCategoriesManager();
     renderSubscription();
@@ -1224,6 +1224,13 @@ function showToast(message) {
     toast.textContent = message;
     toast.classList.add("is-visible");
     toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2600);
+}
+
+async function refreshDashboardData() {
+    await syncCoreData(currentCompany.id);
+    renderHome();
+    renderMenu();
+    renderCategoriesManager();
 }
 
 function escapeHtml(value) {

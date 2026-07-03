@@ -1,28 +1,10 @@
 import { detectCommand } from "./aiCommands.js";
+import { api } from "./apiClient.js";
 
 export class AIService {
     async sendMessage(message, context) {
         try {
-            const response = await fetch("/api/ai/chat", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    message,
-                    context,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                return {
-                    role: "assistant",
-                    content: data.reply || "AI backend вернул ошибку.",
-                    action: null,
-                };
-            }
+            const data = await api.post("/ai/chat", { message, context });
 
             const localIntent = detectCommand(message, context);
             const backendAction = data.action && typeof data.action === "object" && data.action.type

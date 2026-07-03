@@ -4,6 +4,9 @@ import { loadIngredients } from "./ingredients.js";
 import { checkLowStock } from "./inventory.js";
 import { loadReceipts } from "./pos.js";
 import { loadProducts } from "./products.js";
+import { loadFloor } from "./floor.js";
+import { loadOrders } from "./orders.js";
+import { loadTables } from "./tables.js";
 import { loadProcurementDashboard } from "./procurementStatistics.js";
 import { loadPurchaseOrders } from "./purchaseOrders.js";
 import { loadStaffDashboard } from "./staffDashboard.js";
@@ -14,6 +17,9 @@ export function loadContext({ companyId, user, currentView }) {
     const products = loadProducts(companyId);
     const categories = loadCategories(companyId);
     const ingredients = loadIngredients(companyId);
+    const halls = loadFloor(companyId);
+    const tables = loadTables(companyId);
+    const openOrders = loadOrders(companyId, "opened");
 
     return {
         companyId,
@@ -28,6 +34,9 @@ export function loadContext({ companyId, user, currentView }) {
             products: products.length,
             categories: categories.length,
             ingredients: ingredients.length,
+            halls: halls.length,
+            tables: tables.length,
+            openOrders: openOrders.length,
             lowStock: checkLowStock(companyId).length,
             openReceipts: loadReceipts(companyId, "open").length,
             employees: loadEmployees(companyId).length,
@@ -49,6 +58,14 @@ function getPageData(currentView, companyId) {
         return {
             ingredients: loadIngredients(companyId),
             lowStock: checkLowStock(companyId),
+        };
+    }
+
+    if (currentView === "floor") {
+        return {
+            halls: loadFloor(companyId),
+            tables: loadTables(companyId),
+            openOrders: loadOrders(companyId, "opened"),
         };
     }
 

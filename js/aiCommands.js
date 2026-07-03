@@ -8,22 +8,28 @@ export function generateMenu(type = "coffee") {
     if (type.includes("итальян")) {
         return {
             categories: ["Паста", "Пицца", "Салаты", "Десерты", "Напитки"],
-            products: ["Маргарита", "Карбонара", "Тирамису", "Лимонад"],
+            products: [
+                { name: "Пицца Маргарита", categoryName: "Пицца", price: 12, description: "Томатный соус, моцарелла, базилик" },
+                { name: "Паста Карбонара", categoryName: "Паста", price: 11, description: "Паста, сливочный соус, бекон" },
+                { name: "Тирамису", categoryName: "Десерты", price: 7, description: "Классический итальянский десерт" },
+                { name: "Лимонад", categoryName: "Напитки", price: 4, description: "Домашний лимонад" },
+            ],
         };
     }
 
     return {
         categories: ["Кофе", "Чай", "Десерты", "Холодные напитки"],
-        products: ["Капучино", "Латте", "Американо", "Чизкейк"],
+        products: [
+            { name: "Капучино", categoryName: "Кофе", price: 4, description: "Эспрессо, молоко, молочная пена" },
+            { name: "Латте", categoryName: "Кофе", price: 4.5, description: "Мягкий кофейный напиток с молоком" },
+            { name: "Американо", categoryName: "Кофе", price: 3, description: "Эспрессо с горячей водой" },
+            { name: "Чизкейк", categoryName: "Десерты", price: 6, description: "Классический сливочный чизкейк" },
+        ],
     };
 }
 
 export function generateProducts(prompt) {
-    return generateMenu(prompt).products.map((name, index) => ({
-        name,
-        price: 5 + index,
-        description: `AI-предложение: ${name}`,
-    }));
+    return generateMenu(prompt).products;
 }
 
 export function generateRecipe(productName) {
@@ -59,11 +65,63 @@ export function analyzeFinance() {
 export function detectCommand(message, context) {
     const text = message.toLowerCase();
     const productRequest = parseProductCreateRequest(text);
+    const categoryRequest = parseCategoryCreateRequest(text);
+    const ingredientRequest = parseIngredientCreateRequest(text);
+    const tableRequest = parseTableCreateRequest(text);
+    const orderRequest = parseOrderCreateRequest(text);
     const priceRequest = parsePriceUpdateRequest(text, context);
     const receiptRequest = parseReceiptAddRequest(text);
 
     if (text.includes("заканч") || text.includes("ниже минимума")) {
         return { reply: analyzeInventory(context.companyId), action: null };
+    }
+
+    if (categoryRequest) {
+        return {
+            reply: `Я подготовил категорию «${categoryRequest.name}». Напишите «подтверждаю», чтобы создать её в базе и меню.`,
+            action: {
+                type: "category:create",
+                pending: true,
+                description: `Создать категорию «${categoryRequest.name}».`,
+                payload: categoryRequest,
+            },
+        };
+    }
+
+    if (ingredientRequest) {
+        return {
+            reply: `Я подготовил ингредиент «${ingredientRequest.name}» с остатком ${ingredientRequest.quantity} ${ingredientRequest.unit}. Напишите «подтверждаю», чтобы добавить на склад.`,
+            action: {
+                type: "ingredient:create",
+                pending: true,
+                description: `Создать ингредиент «${ingredientRequest.name}» на складе.`,
+                payload: ingredientRequest,
+            },
+        };
+    }
+
+    if (tableRequest) {
+        return {
+            reply: `Я подготовил стол «${tableRequest.name}» на ${tableRequest.seats} мест. Напишите «подтверждаю», чтобы создать его в зале.`,
+            action: {
+                type: "table:create",
+                pending: true,
+                description: `Создать стол «${tableRequest.name}».`,
+                payload: tableRequest,
+            },
+        };
+    }
+
+    if (orderRequest) {
+        return {
+            reply: `Я подготовил заказ для «${orderRequest.tableName}». Напишите «подтверждаю», чтобы открыть заказ.`,
+            action: {
+                type: "order:create",
+                pending: true,
+                description: `Создать заказ для «${orderRequest.tableName}».`,
+                payload: orderRequest,
+            },
+        };
     }
 
     if (productRequest) {
@@ -117,8 +175,13 @@ export function detectCommand(message, context) {
     if (text.includes("меню")) {
         const generated = generateMenu(text);
         return {
-            reply: `Могу предложить меню: категории ${generated.categories.join(", ")}. Товары: ${generated.products.join(", ")}. Подтвердите, если нужно создать.`,
-            action: null,
+            reply: `Могу создать меню: категории ${generated.categories.join(", ")}. Товары: ${generated.products.map((item) => item.name).join(", ")}. Напишите «подтверждаю», чтобы добавить это в базу.`,
+            action: {
+                type: "menu:template:create",
+                pending: true,
+                description: "Создать готовое меню с категориями и товарами.",
+                payload: generated,
+            },
         };
     }
 
@@ -172,6 +235,60 @@ function parseProductCreateRequest(text) {
     };
 }
 
+function parseCategoryCreateRequest(text) {
+    const match = text.match(/(?:создай|добавь)\s+категори[юя]\s+(.+?)(?:$| с | для )/i);
+    if (!match) return null;
+
+    return {
+        name: capitalize(match[1].replace(/в меню/g, "").trim()),
+        description: "Создано AI",
+        color: "#3B82F6",
+        icon: "🍽",
+        active: true,
+    };
+}
+
+function parseIngredientCreateRequest(text) {
+    const match = text.match(/(?:добавь|создай)\s+ингредиент\s+(.+?)(?:\s+(\d+(?:[.,]\d+)?)\s*(кг|г|л|мл|шт)?)?$/i);
+    if (!match) return null;
+
+    return {
+        name: capitalize(match[1].trim()),
+        quantity: Number((match[2] || 0).replace?.(",", ".") || 0),
+        unit: match[3] || "шт",
+        category: "Прочее",
+        minQuantity: 0,
+        costPrice: 0,
+    };
+}
+
+function parseTableCreateRequest(text) {
+    const match = text.match(/(?:создай|добавь)\s+стол\s*(?:№|номер)?\s*(\d+)?(?:\s+на\s+(\d+)\s+мест)?/i);
+    if (!match) return null;
+
+    const number = match[1] || "";
+    return {
+        name: number ? `Стол №${number}` : "Стол №1",
+        seats: Number(match[2] || 4),
+        hallName: "Основной зал",
+        status: "free",
+    };
+}
+
+function parseOrderCreateRequest(text) {
+    const match = text.match(/(?:создай|открой)\s+заказ\s+на\s+стол\s*(?:№|номер)?\s*(\d+)(?:\s+(.+))?/i);
+    if (!match) return null;
+
+    const rest = (match[2] || "").replace(/с\s+/i, "").trim();
+    return {
+        tableName: `Стол №${match[1]}`,
+        guests: 1,
+        productName: rest || "",
+        quantity: 1,
+        comments: "Создано AI",
+    };
+}
+
 function parsePriceUpdateRequest(text, context) {
     const percentMatch = text.match(/(?:подними|увеличь|сделай дороже|повысь).+?на\s+(\d+(?:[.,]\d+)?)%/i);
     const lowerPercentMatch = text.match(/(?:снизь|уменьши|сделай дешевле).+?на\s+(\d+(?:[.,]\d+)?)%/i);
@@ -195,12 +312,13 @@ function parsePriceUpdateRequest(text, context) {
 }
 
 function parseReceiptAddRequest(text) {
-    const match = text.match(/(?:пробей|добавь)\s+(.+?)(?:\s+в чек|$)/i);
+    const match = text.match(/(?:пробей|добавь)\s+(?:(\d+)\s+)?(.+?)(?:\s+в чек|$)/i);
 
     if (!match || text.includes("меню")) return null;
 
     return {
-        productName: capitalize(match[1].trim()),
+        quantity: Number(match[1] || 1),
+        productName: capitalize(match[2].trim()),
     };
 }
 
