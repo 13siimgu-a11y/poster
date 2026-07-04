@@ -4787,7 +4787,7 @@ button.is-rippling::after {
     position: fixed;
     top: 74px;
     left: 18px;
-    z-index: 70;
+    z-index: 120;
     display: none;
     width: min(320px, calc(100vw - 28px));
     padding: 10px;
@@ -4796,6 +4796,15 @@ button.is-rippling::after {
     background: color-mix(in srgb, var(--card) 94%, transparent);
     box-shadow: var(--ds-shadow-lg);
     backdrop-filter: blur(18px);
+}
+
+.workspace-action-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    border: 0;
+    background: rgba(15, 23, 42, .20);
+    backdrop-filter: blur(2px);
 }
 
 .workspace-action-drawer.is-open {
@@ -4818,6 +4827,13 @@ button.is-rippling::after {
     grid-column: 1 / -1;
 }
 
+.workspace-layout--order .workspace-unified__products {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+    align-self: start;
+}
+
 .workspace-table-first.panel {
     padding: 14px;
     max-width: 100%;
@@ -4832,14 +4848,17 @@ button.is-rippling::after {
 
 .workspace-menu-sticky {
     position: sticky;
-    top: 10px;
-    z-index: 4;
+    top: 76px;
+    z-index: 20;
     display: grid;
-    gap: 12px;
-    margin: -4px -4px 12px;
-    padding: 4px;
-    background: color-mix(in srgb, var(--card) 82%, transparent);
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 10px;
+    border: 1px solid var(--ds-border);
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--card) 94%, transparent);
     backdrop-filter: blur(16px);
+    box-shadow: var(--ds-shadow-sm);
 }
 
 .workspace-search label {
@@ -4856,7 +4875,7 @@ button.is-rippling::after {
 .workspace-category-rail {
     flex-wrap: nowrap;
     margin: 0;
-    padding: 2px 0 8px;
+    padding: 0 0 2px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -4987,9 +5006,10 @@ button.is-rippling::after {
 
 .workspace-category-prompt {
     display: grid;
-    gap: 12px;
-    min-height: 320px;
+    gap: 16px;
+    min-height: min(520px, calc(100dvh - 190px));
     align-content: start;
+    padding-top: 4px;
 }
 
 .workspace-category-prompt h3 {
@@ -5005,24 +5025,30 @@ button.is-rippling::after {
 
 .workspace-category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
 }
 
 .workspace-category-grid button {
     display: grid;
     gap: 8px;
-    min-height: 112px;
+    align-content: center;
+    min-height: 132px;
     border: 1px solid var(--ds-border);
-    border-radius: 22px;
-    background: var(--ds-surface-solid);
+    border-radius: 26px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .96), color-mix(in srgb, var(--card) 86%, transparent));
     color: var(--text);
-    padding: 16px;
-    text-align: left;
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 18px 34px rgba(15, 23, 42, .08);
 }
 
 .workspace-category-grid span {
-    font-size: 28px;
+    font-size: 34px;
+}
+
+.workspace-category-grid strong {
+    font-size: 18px;
 }
 
 .workspace-change-card {
@@ -5281,6 +5307,8 @@ button.is-rippling::after {
     .workspace-action-drawer {
         top: 66px;
         left: 8px;
+        right: 8px;
+        width: auto;
     }
 
     .workspace-section-head {
@@ -5339,6 +5367,27 @@ button.is-rippling::after {
     .workspace-products {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         padding-bottom: 220px;
+    }
+
+    .workspace-menu-sticky {
+        top: 66px;
+        padding: 8px;
+        border-radius: 18px;
+    }
+
+    .workspace-category-prompt {
+        min-height: calc(100dvh - 150px);
+        padding-top: 0;
+    }
+
+    .workspace-category-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .workspace-category-grid button {
+        min-height: 112px;
+        border-radius: 20px;
     }
 
     .workspace-products button {

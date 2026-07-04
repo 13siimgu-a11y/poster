@@ -83,6 +83,7 @@ function renderWorkspace() {
     if (!root || !currentCompany) {
         return;
     }
+    root.classList.toggle("is-workspace-menu-open", workspaceMenuOpen);
 
     root.innerHTML = `
         <div class="workspace-minimal-top">
@@ -92,6 +93,7 @@ function renderWorkspace() {
                 <span>${escapeHtml(getRoleTitle())}</span>
             </div>
         </div>
+        ${workspaceMenuOpen ? '<button class="workspace-action-backdrop" type="button" data-work-action="toggle-menu" aria-label="Закрыть меню"></button>' : ""}
         <div class="workspace-action-drawer ${workspaceMenuOpen ? "is-open" : ""}">
             <button type="button" data-work-action="reports">Отчет</button>
             <button type="button" data-work-action="open-shift">Открыть смену</button>
@@ -242,27 +244,28 @@ function renderUnifiedWorkspace() {
         `;
     }
 
+    const showProducts = activeProductCategoryId || productSearch.trim() || !categories.length;
     return `
         <section class="workspace-unified__products panel glass-panel">
             <button class="workspace-back-to-tables" type="button" data-work-action="new-order">
                 ← Назад к выбору стола
             </button>
-            <div class="workspace-menu-sticky">
-                <div class="workspace-search">
-                    <label for="workspaceProductSearch">Поиск</label>
-                    <input id="workspaceProductSearch" type="search" placeholder="Найти товар" value="${escapeHtml(productSearch)}">
+            ${showProducts ? `
+                <div class="workspace-menu-sticky">
+                    <div class="workspace-category-rail" aria-label="Категории">
+                        ${categories.map((category) => `
+                            <button class="${idsEqual(activeProductCategoryId, category.id) ? "is-active" : ""}" type="button" data-product-category="${category.id}">
+                                ${escapeHtml(category.name)}
+                            </button>
+                        `).join("")}
+                    </div>
+                    <div class="workspace-search">
+                        <label for="workspaceProductSearch">Поиск</label>
+                        <input id="workspaceProductSearch" type="search" placeholder="Найти товар" value="${escapeHtml(productSearch)}">
+                    </div>
                 </div>
-                <div class="workspace-category-rail" aria-label="Категории">
-                    ${categories.map((category) => `
-                        <button class="${idsEqual(activeProductCategoryId, category.id) ? "is-active" : ""}" type="button" data-product-category="${category.id}">
-                            ${escapeHtml(category.name)}
-                        </button>
-                    `).join("")}
-                </div>
-            </div>
-            ${activeProductCategoryId || productSearch.trim() || !categories.length
-                ? renderQuickProducts(36)
-                : renderCategoryPrompt(categories)}
+                ${renderQuickProducts(36)}
+            ` : renderCategoryPrompt(categories)}
         </section>
         <aside class="workspace-order-card workspace-order-card--${orderSheetState} ${order.items.length ? "" : "workspace-order-card--empty"} panel glass-panel" id="workspaceOrderPanel">
             ${renderActiveOrder()}
