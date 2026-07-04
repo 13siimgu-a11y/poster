@@ -49,7 +49,7 @@ let activeProductCategoryId = "";
 let productSearch = "";
 let receiptSearch = "";
 let inventorySearch = "";
-let reportPeriod = "24h";
+let reportPeriod = "custom";
 let customReportRange = null;
 let isBound = false;
 let orderSheetState = "peek";
@@ -1349,13 +1349,14 @@ function printOrderLikeReceipt(item) {
 }
 
 function renderReports() {
+    const reportRange = ensureDefaultReportRange();
     const report = buildReport();
     return `
         <section class="workspace-full panel">
             <div class="workspace-section-head">
                 <div>
                     <h3>Отчеты</h3>
-                    <p>Период по умолчанию — последние 24 часа.</p>
+                    <p>Выберите дату и время. По умолчанию отчет считается с 00:00 до 00:00.</p>
                 </div>
                 <div class="workspace-report-actions">
                     <button type="button" data-export-report="csv">CSV</button>
@@ -1365,16 +1366,9 @@ function renderReports() {
                 </div>
             </div>
             <div class="workspace-report-filters">
-                <select id="reportPeriod">
-                    <option value="24h">Последние 24 часа</option>
-                    <option value="today">Сегодня</option>
-                    <option value="yesterday">Вчера</option>
-                    <option value="7d">Последние 7 дней</option>
-                    <option value="30d">Последние 30 дней</option>
-                    <option value="custom">Произвольный диапазон</option>
-                </select>
-                <input id="reportStart" type="datetime-local" value="${customReportRange?.start || ""}">
-                <input id="reportEnd" type="datetime-local" value="${customReportRange?.end || ""}">
+                <label>Дата<input id="reportDate" type="date" value="${reportRange.date}"></label>
+                <label>С<input id="reportStartTime" type="time" value="${reportRange.startTime}"></label>
+                <label>До<input id="reportEndTime" type="time" value="${reportRange.endTime}"></label>
                 <button class="primary-btn" type="button" data-build-report>Сформировать отчет</button>
             </div>
             <div class="workspace-report-grid">
@@ -1393,15 +1387,9 @@ function renderReports() {
 }
 
 function bindReports() {
-    const periodSelect = document.getElementById("reportPeriod");
-    periodSelect.value = reportPeriod;
-
     document.querySelector("[data-build-report]").addEventListener("click", () => {
-        reportPeriod = periodSelect.value;
-        customReportRange = {
-            start: document.getElementById("reportStart").value,
-            end: document.getElementById("reportEnd").value,
-        };
+        reportPeriod = "custom";
+        customReportRange = buildReportRangeFromInputs();
         renderActiveScreen();
     });
 
@@ -1943,12 +1931,54 @@ function getReportRange() {
     } else if (reportPeriod === "30d") {
         start.setDate(start.getDate() - 30);
     } else if (reportPeriod === "custom" && customReportRange?.start && customReportRange?.end) {
-        return { start: new Date(customReportRange.start), end: new Date(customReportRange.end) };
+        const customStart = new Date(customReportRange.start);
+        const customEnd = new Date(customReportRange.end);
+        if (customEnd <= customStart) {
+            customEnd.setDate(customEnd.getDate() + 1);
+        }
+        return { start: customStart, end: customEnd };
     } else {
         start.setHours(start.getHours() - 24);
     }
 
     return { start, end };
+}
+
+function ensureDefaultReportRange() {
+    if (customReportRange?.date) {
+        return customReportRange;
+    }
+
+    const today = toDateInputValue(new Date());
+    customReportRange = {
+        date: today,
+        startTime: "00:00",
+        endTime: "00:00",
+        start: `${today}T00:00`,
+        end: `${today}T00:00`,
+    };
+    reportPeriod = "custom";
+    return customReportRange;
+}
+
+function buildReportRangeFromInputs() {
+    const date = document.getElementById("reportDate").value || toDateInputValue(new Date());
+    const startTime = document.getElementById("reportStartTime").value || "00:00";
+    const endTime = document.getElementById("reportEndTime").value || "00:00";
+    return {
+        date,
+        startTime,
+        endTime,
+        start: `${date}T${startTime}`,
+        end: `${date}T${endTime}`,
+    };
+}
+
+function toDateInputValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
 function withinRange(value, start, end) {
