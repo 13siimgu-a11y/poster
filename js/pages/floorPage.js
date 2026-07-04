@@ -28,6 +28,7 @@ function bindFloorEvents() {
 
     document.getElementById("createHallButton").addEventListener("click", createHallFromPrompt);
     document.getElementById("createTableButton").addEventListener("click", () => createTableForHall("round"));
+    document.getElementById("confirmFloorLayoutButton")?.addEventListener("click", confirmFloorLayout);
     document.querySelectorAll("[data-table-type]").forEach((button) => {
         button.addEventListener("click", () => createTableForHall(button.dataset.tableType));
     });
@@ -68,7 +69,7 @@ function renderFloorStats() {
 function renderHalls() {
     const halls = loadFloor(currentCompany.id).filter((hall) => !hall.archived);
     document.getElementById("hallsList").innerHTML = halls.map((hall) => `
-        <button class="hall-card ${Number(activeHall?.id) === Number(hall.id) ? "is-active" : ""}" type="button" data-hall-id="${hall.id}">
+        <button class="hall-card ${idsEqual(activeHall?.id, hall.id) ? "is-active" : ""}" type="button" data-hall-id="${hall.id}">
             <strong>${helpers.escapeHtml(hall.name)}</strong>
             <span>${hall.active ? "Активен" : "Неактивен"}</span>
         </button>
@@ -100,7 +101,7 @@ function renderCanvas() {
 
     canvas.innerHTML = tables.map((table) => {
         const status = TABLE_STATUSES[table.status] || TABLE_STATUSES.free;
-        const order = orders.find((item) => Number(item.id) === Number(table.activeOrderId));
+        const order = orders.find((item) => idsEqual(item.id, table.activeOrderId));
 
         return `
             <button class="floor-table floor-table--${table.type}" type="button"
@@ -120,6 +121,22 @@ function renderCanvas() {
             moveHallObject(tableId, x, y);
         });
     });
+}
+
+function confirmFloorLayout() {
+    const tables = loadTables(currentCompany.id, activeHall.id);
+    tables.forEach((table) => {
+        updateTable(table.id, {
+            x: table.x,
+            y: table.y,
+            width: table.width,
+            height: table.height,
+            rotation: table.rotation,
+            name: table.name,
+            comment: table.comment || "",
+        });
+    });
+    helpers.showToast("Расстановка столов подтверждена и доступна сотрудникам");
 }
 
 function createHallFromPrompt() {
@@ -148,7 +165,7 @@ function createTableForHall(type) {
 
 function openTableModal(tableId) {
     const table = loadTables(currentCompany.id).find((item) => idsEqual(item.id, tableId));
-    const order = loadOrders(currentCompany.id, "opened").find((item) => Number(item.id) === Number(table.activeOrderId));
+    const order = loadOrders(currentCompany.id, "opened").find((item) => idsEqual(item.id, table.activeOrderId));
     document.getElementById("floorModalTitle").textContent = table.name;
     document.getElementById("floorModalBody").innerHTML = `
         <div class="table-modal-grid">
@@ -200,6 +217,8 @@ async function handleTableAction(action, table, order) {
         updateTable(table.id, {
             name: window.prompt("Название", table.name) || table.name,
             seats: Number(window.prompt("Количество мест", String(table.seats)) || table.seats),
+            width: Number(window.prompt("Ширина стола", String(table.width || 120)) || table.width || 120),
+            height: Number(window.prompt("Высота стола", String(table.height || 120)) || table.height || 120),
             comment: window.prompt("Комментарий", table.comment || "") || "",
         });
     }

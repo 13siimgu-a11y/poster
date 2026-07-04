@@ -20,6 +20,7 @@ body.modal-open {
 }
 
 .workspace-page-head {
+    display: none;
     position: sticky;
     top: 10px;
     z-index: 30;
@@ -87,7 +88,7 @@ body.modal-open {
 }
 
 .workspace-page .staff-workspace {
-    min-height: calc(100vh - 118px);
+    min-height: calc(100vh - 24px);
 }
 
 .workspace-page .worktop,

@@ -1,12 +1,12 @@
 import { canShowAction } from "../accessPolicy.js";
-import { loadCategories } from "../categories.js";
+import { createCategory, loadCategories } from "../categories.js";
 import { formatMoney } from "../currency.js";
 import { createHall, loadFloor, ensureDefaultHall } from "../floor.js";
 import { addStock, loadIngredients, performInventory, writeOffStock } from "../inventory.js";
 import { createKitchenOrder, loadKitchenOrders } from "../kitchenOrders.js";
 import { idsEqual } from "../apiPersistence.js";
 import { createOrder, loadOrders, updateOrder, closeOrder, cancelOrder, transferOrder } from "../orders.js";
-import { loadProducts } from "../products.js";
+import { createProduct, loadProducts } from "../products.js";
 import {
     calculateReceipt,
     getAvailablePosProducts,
@@ -53,6 +53,7 @@ let reportPeriod = "24h";
 let customReportRange = null;
 let isBound = false;
 let orderSheetState = "peek";
+let workspaceMenuOpen = false;
 
 export function initStaffWorkspacePage(context) {
     currentCompany = context.company;
@@ -84,35 +85,25 @@ function renderWorkspace() {
     }
 
     root.innerHTML = `
-        <div class="worktop">
+        <div class="workspace-minimal-top">
+            <button class="workspace-burger" type="button" data-work-action="toggle-menu" aria-label="Открыть меню">☰</button>
             <div>
-                <span class="worktop__role">${escapeHtml(getRoleTitle())}</span>
-                <h2>Рабочее место</h2>
-                <p>${escapeHtml(currentCompany.name)} · все основные действия рядом.</p>
-            </div>
-            <div class="worktop__actions">
-                <button class="secondary-btn" type="button" data-work-action="quick-sale">Быстрый чек</button>
-                <button class="secondary-btn" type="button" data-work-action="new-order">Стол</button>
-                <button class="primary-btn" type="button" data-work-action="pay">Оплата</button>
-                ${canShowAction(currentUser, "ai:use") ? '<button class="secondary-btn" type="button" data-work-action="ai">AI</button>' : ""}
+                <strong>${escapeHtml(currentCompany.name)}</strong>
+                <span>${escapeHtml(getRoleTitle())}</span>
             </div>
         </div>
-
-        <div class="workspace-notices" id="workspaceNotices"></div>
+        <div class="workspace-action-drawer ${workspaceMenuOpen ? "is-open" : ""}">
+            <button type="button" data-work-action="reports">Отчет</button>
+            <button type="button" data-work-action="open-shift">Открыть смену</button>
+            <button type="button" data-work-action="add-product">Добавить меню</button>
+            <button type="button" data-work-action="add-category">Добавить категорию</button>
+            <button type="button" data-work-action="print">Печатать чек</button>
+            <button type="button" data-work-action="logout">Выйти</button>
+        </div>
         <div class="workspace-layout" id="workspaceLayout"></div>
-
-        <nav class="workspace-bottom-nav" aria-label="Быстрые действия сотрудника">
-            ${renderBottomButton("quick", "⚡", "Быстро")}
-            ${renderBottomButton("floor", "⌂", "Залы")}
-            ${renderBottomButton("receipts", "▤", "Чеки")}
-            ${renderBottomButton("reports", "▥", "Отчеты")}
-            ${canShowAction(currentUser, "inventory:manage") ? renderBottomButton("inventory", "▧", "Склад") : ""}
-            ${renderBottomButton("menu", "☰", "Меню")}
-        </nav>
     `;
 
     bindRootActions(root);
-    renderWorkspaceNotices();
     renderActiveScreen();
 }
 
@@ -244,8 +235,8 @@ function renderUnifiedWorkspace() {
                         </button>
                     `).join("")}
                 </div>
-                <div class="workspace-floor-grid">
-                    ${renderTableMap(halls)}
+                <div class="workspace-floor-grid workspace-floor-map">
+                    ${renderTableMap(halls, true)}
                 </div>
             </section>
         `;
@@ -262,7 +253,6 @@ function renderUnifiedWorkspace() {
                     <input id="workspaceProductSearch" type="search" placeholder="Найти товар" value="${escapeHtml(productSearch)}">
                 </div>
                 <div class="workspace-category-rail" aria-label="Категории">
-                    <button class="${activeProductCategoryId === "" ? "is-active" : ""}" type="button" data-product-category="">Все</button>
                     ${categories.map((category) => `
                         <button class="${idsEqual(activeProductCategoryId, category.id) ? "is-active" : ""}" type="button" data-product-category="${category.id}">
                             ${escapeHtml(category.name)}
@@ -270,7 +260,9 @@ function renderUnifiedWorkspace() {
                     `).join("")}
                 </div>
             </div>
-            ${renderQuickProducts(36)}
+            ${activeProductCategoryId || productSearch.trim() || !categories.length
+                ? renderQuickProducts(36)
+                : renderCategoryPrompt(categories)}
         </section>
         <aside class="workspace-order-card workspace-order-card--${orderSheetState} ${order.items.length ? "" : "workspace-order-card--empty"} panel glass-panel" id="workspaceOrderPanel">
             ${renderActiveOrder()}
@@ -302,8 +294,8 @@ function renderFloorWorkspace() {
                     </button>
                 `).join("")}
             </div>
-            <div class="workspace-floor-grid">
-                ${renderTableMap(halls)}
+            <div class="workspace-floor-grid workspace-floor-map">
+                ${renderTableMap(halls, true)}
             </div>
         </section>
         <aside class="workspace-order-card panel" id="workspaceOrderPanel">
@@ -312,7 +304,7 @@ function renderFloorWorkspace() {
     `;
 }
 
-function renderTableMap(halls) {
+function renderTableMap(halls, asMap = false) {
     if (!halls.length) {
         return renderEmptyState("Нет зала", "Создайте зал и столы.", "");
     }
@@ -338,8 +330,11 @@ function renderTableMap(halls) {
         const order = orders.find((item) => idsEqual(item.id, table.activeOrderId));
         const reservation = reservations.find((item) => idsEqual(item.tableId, table.id) && item.status !== "cancelled");
         const state = getTableState(table, order, reservation);
+        const mapStyle = asMap
+            ? `style="left:${Number(table.x || 0)}px; top:${Number(table.y || 0)}px; width:${Number(table.width || 120)}px; height:${Number(table.height || 120)}px; transform:rotate(${Number(table.rotation || 0)}deg);"`
+            : "";
         return `
-            <button class="workspace-table workspace-table--${state.tone} ${idsEqual(order?.id, activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}">
+            <button class="workspace-table workspace-table--${state.tone} ${idsEqual(order?.id, activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}" ${mapStyle}>
                 <span class="workspace-table__status">${state.icon}</span>
                 <strong>${escapeHtml(table.name)}</strong>
                 <small>${escapeHtml(table.hallName)}</small>
@@ -351,6 +346,23 @@ function renderTableMap(halls) {
             </button>
         `;
     }).join("");
+}
+
+function renderCategoryPrompt(categories) {
+    return `
+        <div class="workspace-category-prompt">
+            <h3>Выберите категорию</h3>
+            <p>После выбора категории появятся товары.</p>
+            <div class="workspace-category-grid">
+                ${categories.map((category) => `
+                    <button type="button" data-product-category="${category.id}">
+                        <span>${escapeHtml(category.icon || "🍽")}</span>
+                        <strong>${escapeHtml(category.name)}</strong>
+                    </button>
+                `).join("")}
+            </div>
+        </div>
+    `;
 }
 
 function getTableState(table, order, reservation) {
@@ -615,6 +627,8 @@ function openTableOrder(tableId) {
 
     activeOrderId = order.id;
     orderSheetState = "open";
+    activeProductCategoryId = "";
+    productSearch = "";
     renderActiveScreen();
 }
 
@@ -903,48 +917,54 @@ function openPaymentModal(order) {
                 <strong>${formatMoney(order.total, currentCompany.settings.currency)}</strong>
             </div>
             <div class="workspace-pay-options">
-                <button class="is-active" type="button" data-pay-choice="cash"><span>💵</span>Наличные</button>
-                <button type="button" data-pay-choice="card"><span>💳</span>Карта</button>
-                <button type="button" data-pay-choice="mixed"><span>🔀</span>Смешанная</button>
+                <button class="is-active" type="button" data-pay-choice="cash"><span>💵</span>Наличка</button>
+                <button type="button" data-pay-choice="card"><span>💳</span>Безнал</button>
             </div>
             <input name="type" type="hidden" value="cash">
             <div class="workspace-payment-fields" data-payment-fields>
-                <label>Наличные<input name="cash" type="number" min="0" step="0.01" value="${order.total}" inputmode="decimal"></label>
-                <label hidden>Карта<input name="card" type="number" min="0" step="0.01" value="0" inputmode="decimal"></label>
+                <label data-cash-received>Сколько дали<input name="cashReceived" type="number" min="0" step="0.01" value="${order.total}" inputmode="decimal"></label>
+                <div class="workspace-change-card" data-change-card>
+                    <span>Сдача</span>
+                    <strong data-change-amount>${formatMoney(0, currentCompany.settings.currency)}</strong>
+                </div>
             </div>
             <button class="primary-btn workspace-pay-submit" type="submit">Оплатить и закрыть</button>
         </form>
     `);
     bindRipple(document.getElementById("workspaceModal"));
+    updateCashChange(order.total);
 
     document.querySelectorAll("[data-pay-choice]").forEach((button) => {
         button.addEventListener("click", () => {
             const type = button.dataset.payChoice;
             document.querySelectorAll("[data-pay-choice]").forEach((item) => item.classList.toggle("is-active", item === button));
             document.querySelector("#orderPaymentForm [name='type']").value = type;
-            const cashField = document.querySelector("#orderPaymentForm [name='cash']").closest("label");
-            const cardField = document.querySelector("#orderPaymentForm [name='card']").closest("label");
+            const cashField = document.querySelector("[data-cash-received]");
+            const changeCard = document.querySelector("[data-change-card]");
             cashField.hidden = type === "card";
-            cardField.hidden = type === "cash";
-            document.querySelector("#orderPaymentForm [name='cash']").value = type === "card" ? 0 : order.total;
-            document.querySelector("#orderPaymentForm [name='card']").value = type === "cash" ? 0 : order.total;
-            if (type === "mixed") {
-                document.querySelector("#orderPaymentForm [name='cash']").value = order.total;
-                document.querySelector("#orderPaymentForm [name='card']").value = 0;
-            }
+            changeCard.hidden = type === "card";
+            updateCashChange(order.total);
         });
     });
+
+    document.querySelector("#orderPaymentForm [name='cashReceived']").addEventListener("input", () => updateCashChange(order.total));
 
     document.getElementById("orderPaymentForm").addEventListener("submit", (event) => {
         event.preventDefault();
         const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-        const payments = data.type === "mixed"
-            ? [
-                { type: "cash", amount: Number(data.cash || 0) },
-                { type: "card", amount: Number(data.card || 0) },
-            ].filter((payment) => payment.amount > 0)
-            : [{ type: data.type, amount: order.total }];
+        const received = Number(data.cashReceived || 0);
+        const change = Math.max(0, received - order.total);
+        const payments = [{
+            type: data.type,
+            amount: order.total,
+            meta: data.type === "cash" ? { received, change } : {},
+        }];
         const paidAmount = payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+        if (data.type === "cash" && received < order.total) {
+            toast("Наличных меньше суммы заказа");
+            return;
+        }
 
         if (paidAmount < order.total) {
             toast("Сумма оплаты меньше итога");
@@ -958,6 +978,17 @@ function openPaymentModal(order) {
         renderWorkspace();
         toast("Заказ закрыт");
     });
+}
+
+function updateCashChange(total) {
+    const input = document.querySelector("#orderPaymentForm [name='cashReceived']");
+    const output = document.querySelector("[data-change-amount]");
+    if (!input || !output) {
+        return;
+    }
+
+    const change = Math.max(0, Number(input.value || 0) - Number(total || 0));
+    output.textContent = formatMoney(change, currentCompany.settings.currency);
 }
 
 function confirmCloseOrder(order) {
@@ -1655,7 +1686,57 @@ function closeShiftModal() {
 }
 
 function handleWorkspaceAction(action) {
+    if (action === "toggle-menu") {
+        workspaceMenuOpen = !workspaceMenuOpen;
+        renderWorkspace();
+        return;
+    }
+
+    if (action === "reports") {
+        workspaceMenuOpen = false;
+        activeScreen = STAFF_SCREENS.reports;
+        renderWorkspace();
+        return;
+    }
+
+    if (action === "open-shift") {
+        workspaceMenuOpen = false;
+        openShiftModal();
+        renderWorkspace();
+        return;
+    }
+
+    if (action === "add-category") {
+        workspaceMenuOpen = false;
+        createCategoryFromWorkspace();
+        return;
+    }
+
+    if (action === "add-product") {
+        workspaceMenuOpen = false;
+        createProductFromWorkspace();
+        return;
+    }
+
+    if (action === "print") {
+        workspaceMenuOpen = false;
+        const order = getActiveOrder();
+        if (order) {
+            printOrder(order);
+        } else {
+            toast("Сначала выберите стол или заказ");
+        }
+        renderWorkspace();
+        return;
+    }
+
+    if (action === "logout") {
+        document.getElementById("logoutButton")?.click();
+        return;
+    }
+
     if (action === "quick-sale") {
+        workspaceMenuOpen = false;
         activeScreen = STAFF_SCREENS.quick;
         const order = createQuickSaleOrder();
         activeOrderId = order.id;
@@ -1665,6 +1746,7 @@ function handleWorkspaceAction(action) {
     }
 
     if (action === "new-order") {
+        workspaceMenuOpen = false;
         activeScreen = STAFF_SCREENS.quick;
         activeOrderId = null;
         orderSheetState = "peek";
@@ -1684,6 +1766,55 @@ function handleWorkspaceAction(action) {
     if (action === "ai") {
         document.getElementById("aiFloatingButton")?.click();
     }
+}
+
+function createCategoryFromWorkspace() {
+    const name = window.prompt("Название категории");
+    if (!name) {
+        renderWorkspace();
+        return;
+    }
+
+    const category = createCategory(currentCompany.id, {
+        name,
+        description: "",
+        icon: "🍽",
+        color: "#3B82F6",
+        active: true,
+    });
+    activeProductCategoryId = category.id;
+    renderWorkspace();
+    toast("Категория добавлена");
+}
+
+function createProductFromWorkspace() {
+    const categories = loadCategories(currentCompany.id).filter((category) => category.active);
+    const category = categories.find((item) => idsEqual(item.id, activeProductCategoryId)) || categories[0];
+    if (!category) {
+        toast("Сначала добавьте категорию");
+        renderWorkspace();
+        return;
+    }
+
+    const name = window.prompt("Название товара");
+    if (!name) {
+        renderWorkspace();
+        return;
+    }
+
+    const price = Number(window.prompt("Цена", "0") || 0);
+    createProduct(currentCompany.id, {
+        name,
+        price,
+        categoryId: category.id,
+        sku: `MENU-${Date.now()}`,
+        quantity: 999,
+        status: "active",
+        posVisible: true,
+    });
+    activeProductCategoryId = category.id;
+    renderWorkspace();
+    toast("Товар добавлен в меню");
 }
 
 function handleWorkspaceHotkeys(event) {

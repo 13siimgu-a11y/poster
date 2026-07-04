@@ -4743,6 +4743,77 @@ button.is-rippling::after {
     grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
 }
 
+.workspace-minimal-top {
+    position: sticky;
+    top: 8px;
+    z-index: 50;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 12px 8px 8px;
+    border: 1px solid var(--ds-border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    box-shadow: var(--ds-shadow-sm);
+    backdrop-filter: blur(16px);
+}
+
+.workspace-burger {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.workspace-minimal-top strong,
+.workspace-minimal-top span {
+    display: block;
+}
+
+.workspace-minimal-top span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.workspace-action-drawer {
+    position: fixed;
+    top: 74px;
+    left: 18px;
+    z-index: 70;
+    display: none;
+    width: min(320px, calc(100vw - 28px));
+    padding: 10px;
+    border: 1px solid var(--ds-border);
+    border-radius: 24px;
+    background: color-mix(in srgb, var(--card) 94%, transparent);
+    box-shadow: var(--ds-shadow-lg);
+    backdrop-filter: blur(18px);
+}
+
+.workspace-action-drawer.is-open {
+    display: grid;
+    gap: 8px;
+}
+
+.workspace-action-drawer button {
+    min-height: 54px;
+    border: 1px solid var(--ds-border);
+    border-radius: 16px;
+    background: var(--ds-surface-solid);
+    color: var(--text);
+    text-align: left;
+    padding: 12px 14px;
+    font-weight: 900;
+}
+
 .workspace-layout--quick .workspace-table-first {
     grid-column: 1 / -1;
 }
@@ -4819,6 +4890,87 @@ button.is-rippling::after {
     margin-top: 6px;
     color: var(--primary);
     font-size: 16px;
+}
+
+.workspace-floor-map {
+    position: relative;
+    display: block;
+    min-height: 620px;
+    overflow: auto;
+    border: 1px dashed var(--ds-border-strong);
+    border-radius: 26px;
+    background:
+        linear-gradient(90deg, rgba(148, 163, 184, .12) 1px, transparent 1px),
+        linear-gradient(rgba(148, 163, 184, .12) 1px, transparent 1px),
+        color-mix(in srgb, var(--card) 84%, transparent);
+    background-size: 42px 42px;
+}
+
+.workspace-floor-map .workspace-table {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    gap: 3px;
+    min-height: auto;
+}
+
+.workspace-category-prompt {
+    display: grid;
+    gap: 12px;
+    min-height: 320px;
+    align-content: start;
+}
+
+.workspace-category-prompt h3 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.workspace-category-prompt p {
+    margin: 0;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.workspace-category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.workspace-category-grid button {
+    display: grid;
+    gap: 8px;
+    min-height: 112px;
+    border: 1px solid var(--ds-border);
+    border-radius: 22px;
+    background: var(--ds-surface-solid);
+    color: var(--text);
+    padding: 16px;
+    text-align: left;
+}
+
+.workspace-category-grid span {
+    font-size: 28px;
+}
+
+.workspace-change-card {
+    display: grid;
+    gap: 4px;
+    padding: 16px;
+    border: 1px solid var(--ds-border);
+    border-radius: 18px;
+    background: var(--ds-primary-soft);
+}
+
+.workspace-change-card span {
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.workspace-change-card strong {
+    color: var(--primary);
+    font-size: 28px;
 }
 
 .workspace-quick-sale-card {
@@ -5050,6 +5202,16 @@ button.is-rippling::after {
         border-radius: 22px;
     }
 
+    .workspace-minimal-top {
+        top: 6px;
+        width: fit-content;
+    }
+
+    .workspace-action-drawer {
+        top: 66px;
+        left: 8px;
+    }
+
     .workspace-section-head {
         margin-bottom: 10px;
     }
@@ -5076,6 +5238,11 @@ button.is-rippling::after {
     .workspace-floor-grid {
         grid-template-columns: 1fr;
         gap: 10px;
+    }
+
+    .workspace-floor-map {
+        min-height: calc(100dvh - 128px);
+        min-width: 760px;
     }
 
     .workspace-table {
