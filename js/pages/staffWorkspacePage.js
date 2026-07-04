@@ -337,12 +337,12 @@ function renderTableMap(halls, asMap = false) {
             <button class="workspace-table workspace-table--${state.tone} ${idsEqual(order?.id, activeOrderId) ? "is-active" : ""}" type="button" data-work-table="${table.id}" ${mapStyle}>
                 <span class="workspace-table__status">${state.icon}</span>
                 <strong>${escapeHtml(table.name)}</strong>
-                <small>${escapeHtml(table.hallName)}</small>
+                ${asMap ? "" : `<small>${escapeHtml(table.hallName)}</small>`}
                 <em>${order ? `${order.guests} гостей` : `${table.seats} мест`}</em>
                 <small class="workspace-table__label">${escapeHtml(state.label)}</small>
                 ${order ? `<b>${formatMoney(order.total, currentCompany.settings.currency)}</b>` : "<b>Свободно</b>"}
-                ${order ? `<small>${escapeHtml(getOrderAge(order.createdAt))}</small>` : ""}
-                ${order?.waiterId ? `<i>${escapeHtml(getWaiterName(order.waiterId))}</i>` : ""}
+                ${!asMap && order ? `<small>${escapeHtml(getOrderAge(order.createdAt))}</small>` : ""}
+                ${!asMap && order?.waiterId ? `<i>${escapeHtml(getWaiterName(order.waiterId))}</i>` : ""}
             </button>
         `;
     }).join("");
