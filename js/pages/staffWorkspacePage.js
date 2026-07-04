@@ -509,7 +509,11 @@ function renderActiveOrder() {
         </div>
         <div class="workspace-order-summary">
             <span>Подытог</span><strong>${formatMoney(order.subtotal, currentCompany.settings.currency)}</strong>
-            <span>Скидка</span><strong>${formatMoney(order.discount, currentCompany.settings.currency)}</strong>
+            <span>Скидка</span>
+            <strong class="workspace-discount-value">
+                ${formatMoney(order.discount, currentCompany.settings.currency)}
+                <button type="button" data-order-action="discount">%</button>
+            </strong>
             <span>Обслуживание</span><strong>${formatMoney(order.tax || 0, currentCompany.settings.currency)}</strong>
             <span class="workspace-order-summary__total">Финальная сумма</span><strong class="workspace-order-summary__total">${formatMoney(finalTotal, currentCompany.settings.currency)}</strong>
         </div>
@@ -525,7 +529,6 @@ function renderActiveOrder() {
         <div class="workspace-order-actions workspace-order-actions--simple">
             <button class="secondary-btn" type="button" data-order-action="kitchen">На кухню</button>
             <button class="secondary-btn" type="button" data-order-action="print">Печать</button>
-            ${canShowAction(currentUser, "discounts:manage") ? '<button class="secondary-btn" type="button" data-order-action="discount">%</button>' : ""}
             <button class="secondary-btn" type="button" data-order-action="more">•••</button>
         </div>
     `;
@@ -1060,16 +1063,22 @@ function printOrder(order) {
 }
 
 function openDiscountModal(order) {
+    const currentPercent = order.subtotal
+        ? Math.round((Number(order.discount || 0) / Number(order.subtotal || 1)) * 10000) / 100
+        : 0;
     openWorkspaceModal("Скидка", `
         <form class="workspace-form" id="discountForm">
-            <label>Сумма скидки<input name="discount" type="number" min="0" step="0.01" value="${order.discount || 0}"></label>
+            <label>Процент скидки<input name="discountPercent" type="number" min="0" max="100" step="0.01" value="${currentPercent}"></label>
+            <p>Скидка считается от подытога заказа.</p>
             <button class="primary-btn" type="submit">Применить скидку</button>
         </form>
     `);
 
     document.getElementById("discountForm").addEventListener("submit", (event) => {
         event.preventDefault();
-        updateOrder(order.id, { discount: Number(new FormData(event.currentTarget).get("discount") || 0), historyAction: "Применена скидка" });
+        const percent = Math.min(100, Math.max(0, Number(new FormData(event.currentTarget).get("discountPercent") || 0)));
+        const discount = Math.round((Number(order.subtotal || 0) * percent / 100) * 100) / 100;
+        updateOrder(order.id, { discount, historyAction: `Применена скидка ${percent}%` });
         closeWorkspaceModal();
         renderActiveScreen();
     });

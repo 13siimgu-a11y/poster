@@ -4741,6 +4741,7 @@ button.is-rippling::after {
 
 .workspace-layout--quick.workspace-layout--order {
     grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+    align-items: start;
 }
 
 .workspace-minimal-top {
@@ -4832,6 +4833,9 @@ button.is-rippling::after {
     grid-template-rows: auto minmax(0, 1fr);
     gap: 12px;
     align-self: start;
+    grid-column: 1;
+    grid-row: 1;
+    min-height: calc(100dvh - 116px);
 }
 
 .workspace-table-first.panel {
@@ -5007,7 +5011,7 @@ button.is-rippling::after {
 .workspace-category-prompt {
     display: grid;
     gap: 16px;
-    min-height: min(520px, calc(100dvh - 190px));
+    min-height: calc(100dvh - 198px);
     align-content: start;
     padding-top: 4px;
 }
@@ -5181,6 +5185,23 @@ button.is-rippling::after {
     padding: 12px 0;
 }
 
+.workspace-discount-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.workspace-discount-value button {
+    min-width: 46px;
+    min-height: 38px;
+    border: 1px solid var(--ds-border);
+    border-radius: 999px;
+    background: var(--ds-primary-soft);
+    color: var(--ds-primary);
+    font-weight: 950;
+}
+
 .workspace-payment-cta {
     border: 0;
     padding: 0;
@@ -5258,12 +5279,18 @@ button.is-rippling::after {
         grid-row: 2;
     }
 
+    .workspace-layout--quick.workspace-layout--order .workspace-unified__products {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
     .workspace-layout--quick .workspace-order-card {
         grid-column: 2;
         grid-row: 1 / span 2;
     }
 
     .workspace-layout--quick.workspace-layout--order .workspace-order-card {
+        grid-column: 2;
         grid-row: 1;
     }
 
