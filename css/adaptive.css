@@ -267,15 +267,18 @@
     }
 
     .nav {
-        top: 84px;
-        max-height: calc(100dvh - 180px);
+        top: 214px;
+        max-height: calc(100dvh - 230px);
         border-radius: 22px;
         -webkit-overflow-scrolling: touch;
     }
 
     .header__actions {
-        bottom: 12px;
+        top: 84px;
+        bottom: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         max-height: none;
+        overflow: visible;
     }
 
     .nav a,
@@ -288,6 +291,9 @@
     .header__actions .btn {
         justify-content: center;
         width: 100%;
+        min-width: 0;
+        white-space: normal;
+        padding-inline: 12px;
     }
 }
 
@@ -338,9 +344,14 @@
     }
 
     .nav {
-        top: 76px;
-        max-height: calc(100dvh - 158px);
+        top: 198px;
+        max-height: calc(100dvh - 210px);
         padding: 10px;
+    }
+
+    .header__actions {
+        top: 76px;
+        grid-template-columns: 1fr;
     }
 
     .nav a {

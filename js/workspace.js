@@ -105,7 +105,7 @@ function renderShell() {
 
     const canUseAI = canShowAction(currentUser, "ai:use");
     document.getElementById("openAIButton").hidden = !canUseAI;
-    document.getElementById("aiFloatingButton").hidden = !canUseAI;
+    document.getElementById("aiFloatingButton").hidden = true;
 }
 
 function bindShellActions() {

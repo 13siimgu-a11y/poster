@@ -57,8 +57,38 @@ select,
 textarea,
 .metric-card,
 .panel,
-.placeholder {
+.placeholder,
+.dash-main,
+.staff-workspace,
+.workspace-layout,
+.workspace-table,
+.workspace-product-card,
+.workspace-order-card,
+.workspace-receipt-row,
+.workspace-action-drawer,
+.workspace-category-grid,
+.workspace-products,
+.primary-btn,
+.secondary-btn {
     min-width: 0;
+}
+
+.dash-main h1,
+.dash-main h2,
+.dash-main h3,
+.dash-main p,
+.dash-main span,
+.dash-main strong,
+.dash-main small,
+.staff-workspace h2,
+.staff-workspace h3,
+.staff-workspace p,
+.staff-workspace span,
+.staff-workspace strong,
+.staff-workspace small,
+.staff-workspace button,
+.workspace-action-drawer button {
+    overflow-wrap: anywhere;
 }
 
 .dashboard-shell {
@@ -4747,7 +4777,7 @@ button.is-rippling::after {
 .workspace-minimal-top {
     position: sticky;
     top: 8px;
-    z-index: 50;
+    z-index: 130;
     display: inline-flex;
     align-items: center;
     gap: 12px;
@@ -4771,6 +4801,7 @@ button.is-rippling::after {
     color: #fff;
     font-size: 22px;
     font-weight: 900;
+    cursor: pointer;
 }
 
 .workspace-minimal-top strong,
@@ -4788,7 +4819,7 @@ button.is-rippling::after {
     position: fixed;
     top: 74px;
     left: 18px;
-    z-index: 120;
+    z-index: 150;
     display: none;
     width: min(320px, calc(100vw - 28px));
     padding: 10px;
@@ -4802,10 +4833,26 @@ button.is-rippling::after {
 .workspace-action-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 110;
+    z-index: 140;
     border: 0;
     background: rgba(15, 23, 42, .20);
     backdrop-filter: blur(2px);
+}
+
+.workspace-page .ai-floating-button {
+    display: none !important;
+}
+
+.workspace-archive-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: min(520px, 100%);
+}
+
+.workspace-archive-head-actions input {
+    flex: 1;
+    min-width: 220px;
 }
 
 .workspace-action-drawer.is-open {
@@ -5336,6 +5383,8 @@ button.is-rippling::after {
         left: 8px;
         right: 8px;
         width: auto;
+        max-height: calc(100dvh - 76px);
+        overflow: auto;
     }
 
     .workspace-section-head {
@@ -5394,6 +5443,19 @@ button.is-rippling::after {
     .workspace-products {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         padding-bottom: 220px;
+    }
+
+    .workspace-archive-head-actions {
+        display: grid;
+        width: 100%;
+    }
+
+    .workspace-archive-head-actions input {
+        min-width: 0;
+    }
+
+    .workspace-receipt-row {
+        grid-template-columns: 1fr;
     }
 
     .workspace-menu-sticky {

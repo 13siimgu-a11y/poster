@@ -85,6 +85,27 @@ input,
     min-width: 0;
 }
 
+h1,
+h2,
+h3,
+p,
+a,
+button,
+label,
+span,
+strong,
+small,
+li {
+    overflow-wrap: anywhere;
+}
+
+.btn,
+.nav a,
+.header__actions .btn {
+    max-width: 100%;
+    text-align: center;
+}
+
 .container {
     width: min(1180px, calc(100% - 40px));
     margin: 0 auto;

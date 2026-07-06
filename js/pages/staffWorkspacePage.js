@@ -83,8 +83,6 @@ function renderWorkspace() {
     if (!root || !currentCompany) {
         return;
     }
-    root.classList.toggle("is-workspace-menu-open", workspaceMenuOpen);
-
     root.innerHTML = `
         <div class="workspace-minimal-top">
             <button class="workspace-burger" type="button" data-work-action="toggle-menu" aria-label="Открыть меню">☰</button>
@@ -93,9 +91,10 @@ function renderWorkspace() {
                 <span>${escapeHtml(getRoleTitle())}</span>
             </div>
         </div>
-        ${workspaceMenuOpen ? '<button class="workspace-action-backdrop" type="button" data-work-action="toggle-menu" aria-label="Закрыть меню"></button>' : ""}
-        <div class="workspace-action-drawer ${workspaceMenuOpen ? "is-open" : ""}">
+        <button class="workspace-action-backdrop" type="button" data-work-action="toggle-menu" aria-label="Закрыть меню" hidden></button>
+        <div class="workspace-action-drawer">
             <button type="button" data-work-action="reports">Отчет</button>
+            <button type="button" data-work-action="receipts">Архив чеков</button>
             <button type="button" data-work-action="open-shift">Открыть смену</button>
             <button type="button" data-work-action="add-product">Добавить меню</button>
             <button type="button" data-work-action="add-category">Добавить категорию</button>
@@ -106,6 +105,7 @@ function renderWorkspace() {
     `;
 
     bindRootActions(root);
+    setWorkspaceMenuOpen(workspaceMenuOpen);
     renderActiveScreen();
 }
 
@@ -121,6 +121,18 @@ function renderBottomButton(screen, icon, label) {
 function bindRootActions(root) {
     bindRipple(root);
 
+    root.querySelector(".workspace-burger")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setWorkspaceMenuOpen(!workspaceMenuOpen);
+    });
+
+    root.querySelector(".workspace-action-backdrop")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setWorkspaceMenuOpen(false);
+    });
+
     root.querySelectorAll("[data-work-screen]").forEach((button) => {
         button.addEventListener("click", () => {
             activeScreen = button.dataset.workScreen;
@@ -131,6 +143,17 @@ function bindRootActions(root) {
     root.querySelectorAll("[data-work-action]").forEach((button) => {
         button.addEventListener("click", () => handleWorkspaceAction(button.dataset.workAction));
     });
+}
+
+function setWorkspaceMenuOpen(isOpen) {
+    workspaceMenuOpen = Boolean(isOpen);
+    const root = document.getElementById("staffWorkspace");
+    root?.classList.toggle("is-workspace-menu-open", workspaceMenuOpen);
+    document.querySelector(".workspace-action-drawer")?.classList.toggle("is-open", workspaceMenuOpen);
+    const backdrop = document.querySelector(".workspace-action-backdrop");
+    if (backdrop) {
+        backdrop.hidden = !workspaceMenuOpen;
+    }
 }
 
 function bindRipple(root = document) {
@@ -1214,7 +1237,10 @@ function renderReceiptArchive() {
                     <h3>Архив чеков</h3>
                     <p>Поиск, просмотр, повторная печать и детали заказа.</p>
                 </div>
-                <input id="receiptArchiveSearch" type="search" placeholder="Поиск по номеру, сумме, клиенту" value="${escapeHtml(receiptSearch)}">
+                <div class="workspace-archive-head-actions">
+                    <button class="secondary-btn" type="button" data-archive-back-tables>Вернуться к столикам</button>
+                    <input id="receiptArchiveSearch" type="search" placeholder="Поиск по номеру, сумме, клиенту" value="${escapeHtml(receiptSearch)}">
+                </div>
             </div>
             <div class="workspace-tabs">
                 ${tabs.map(([value, label]) => `<button class="${activeReceiptFilter === value ? "is-active" : ""}" type="button" data-receipt-filter="${value}">${label}</button>`).join("")}
@@ -1239,6 +1265,13 @@ function renderReceiptArchive() {
 }
 
 function bindReceiptArchive() {
+    document.querySelector("[data-archive-back-tables]")?.addEventListener("click", () => {
+        activeScreen = STAFF_SCREENS.quick;
+        activeOrderId = null;
+        orderSheetState = "peek";
+        renderWorkspace();
+    });
+
     document.getElementById("receiptArchiveSearch")?.addEventListener("input", (event) => {
         receiptSearch = event.target.value;
         renderActiveScreen();
@@ -1371,6 +1404,7 @@ function renderReports() {
                     <p>Выберите дату и время. По умолчанию отчет считается с 00:00 до 00:00.</p>
                 </div>
                 <div class="workspace-report-actions">
+                    <button type="button" data-report-back-tables>Вернуться к столикам</button>
                     <button type="button" data-export-report="csv">CSV</button>
                     <button type="button" data-export-report="excel">Excel</button>
                     <button type="button" data-export-report="pdf">PDF</button>
@@ -1399,6 +1433,13 @@ function renderReports() {
 }
 
 function bindReports() {
+    document.querySelector("[data-report-back-tables]")?.addEventListener("click", () => {
+        activeScreen = STAFF_SCREENS.quick;
+        activeOrderId = null;
+        orderSheetState = "peek";
+        renderWorkspace();
+    });
+
     document.querySelector("[data-build-report]").addEventListener("click", () => {
         reportPeriod = "custom";
         customReportRange = buildReportRangeFromInputs();
@@ -1687,39 +1728,45 @@ function closeShiftModal() {
 
 function handleWorkspaceAction(action) {
     if (action === "toggle-menu") {
-        workspaceMenuOpen = !workspaceMenuOpen;
-        renderWorkspace();
+        setWorkspaceMenuOpen(!workspaceMenuOpen);
         return;
     }
 
     if (action === "reports") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         activeScreen = STAFF_SCREENS.reports;
         renderWorkspace();
         return;
     }
 
+    if (action === "receipts") {
+        setWorkspaceMenuOpen(false);
+        activeScreen = STAFF_SCREENS.receipts;
+        renderWorkspace();
+        return;
+    }
+
     if (action === "open-shift") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         openShiftModal();
         renderWorkspace();
         return;
     }
 
     if (action === "add-category") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         createCategoryFromWorkspace();
         return;
     }
 
     if (action === "add-product") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         createProductFromWorkspace();
         return;
     }
 
     if (action === "print") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         const order = getActiveOrder();
         if (order) {
             printOrder(order);
@@ -1736,7 +1783,7 @@ function handleWorkspaceAction(action) {
     }
 
     if (action === "quick-sale") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         activeScreen = STAFF_SCREENS.quick;
         const order = createQuickSaleOrder();
         activeOrderId = order.id;
@@ -1746,7 +1793,7 @@ function handleWorkspaceAction(action) {
     }
 
     if (action === "new-order") {
-        workspaceMenuOpen = false;
+        setWorkspaceMenuOpen(false);
         activeScreen = STAFF_SCREENS.quick;
         activeOrderId = null;
         orderSheetState = "peek";
