@@ -393,13 +393,14 @@ function switchView(view) {
     }
 
     currentView = view;
-    document.querySelectorAll(".dash-nav button").forEach((button) => {
+    document.querySelectorAll(".dash-nav button[data-view]").forEach((button) => {
         button.classList.toggle("is-active", button.dataset.view === view);
     });
     document.querySelectorAll(".dash-view").forEach((section) => section.classList.remove("is-active"));
     document.getElementById(`${view}View`).classList.add("is-active");
     document.getElementById("dashboardTitle").textContent = viewTitles[view];
     setCompanyHeroVisibility(view);
+    updateNavigationState(view);
 }
 
 function applyNavigationPolicy() {
@@ -421,26 +422,63 @@ function applyNavigationPolicy() {
         const hasVisibleItems = Boolean(group.querySelector("button[data-view]:not([hidden])"));
         group.hidden = !hasVisibleItems;
     });
+
+    updateNavigationState(currentView);
 }
 
 function groupNavigation(nav) {
     const buttonsByView = new Map([...nav.querySelectorAll("button[data-view]")].map((button) => [button.dataset.view, button]));
     nav.innerHTML = "";
 
-    VIEW_GROUPS.forEach((group) => {
+    VIEW_GROUPS.forEach((group, index) => {
         const groupElement = document.createElement("div");
         groupElement.className = "dash-nav-group";
-        groupElement.innerHTML = `<span class="dash-nav-group__title">${group.title}</span>`;
+        groupElement.dataset.navGroup = group.title;
+        groupElement.innerHTML = `
+            <button class="dash-nav-group__toggle" type="button" aria-expanded="${index === 0 ? "true" : "false"}">
+                <span>
+                    <strong>${group.title}</strong>
+                    <small>${group.description || ""}</small>
+                </span>
+            </button>
+            <div class="dash-nav-group__items"></div>
+        `;
+        const items = groupElement.querySelector(".dash-nav-group__items");
 
         group.views.forEach((view) => {
             const button = buttonsByView.get(view);
             if (button) {
-                groupElement.append(button);
+                items.append(button);
             }
         });
 
-        if (groupElement.querySelector("button")) {
+        if (items.querySelector("button")) {
             nav.append(groupElement);
+        }
+    });
+
+    nav.querySelectorAll(".dash-nav-group__toggle").forEach((toggle) => {
+        toggle.addEventListener("click", () => {
+            const group = toggle.closest(".dash-nav-group");
+            const shouldOpen = !group.classList.contains("is-open");
+
+            document.querySelectorAll(".dash-nav-group").forEach((item) => {
+                const isTarget = item === group;
+                item.classList.toggle("is-open", isTarget && shouldOpen);
+                item.querySelector(".dash-nav-group__toggle")?.setAttribute("aria-expanded", String(isTarget && shouldOpen));
+            });
+        });
+    });
+}
+
+function updateNavigationState(view) {
+    document.querySelectorAll(".dash-nav-group").forEach((group) => {
+        const isActiveGroup = Boolean(group.querySelector(`button[data-view="${view}"]`));
+        group.classList.toggle("is-current", isActiveGroup);
+
+        if (isActiveGroup) {
+            group.classList.add("is-open");
+            group.querySelector(".dash-nav-group__toggle")?.setAttribute("aria-expanded", "true");
         }
     });
 }

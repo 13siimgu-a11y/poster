@@ -3,32 +3,29 @@ import { ROLES, normalizeRole } from "./roles.js";
 
 export const VIEW_GROUPS = [
     {
-        title: "Работа сегодня",
-        views: ["home", "workspace", "pos", "floor", "kitchen"],
+        title: "Обзор",
+        description: "Главная, помощник и рабочий экран",
+        views: ["home", "workspace", "ai"],
     },
     {
-        title: "Каталог",
+        title: "Продажи",
+        description: "Касса, кухня, клиенты и отчеты",
+        views: ["pos", "kitchen", "clients", "reports"],
+    },
+    {
+        title: "Меню",
+        description: "Товары, категории и цены",
         views: ["menu", "categories"],
     },
     {
-        title: "Клиенты",
-        views: ["clients", "ai"],
-    },
-    {
-        title: "Склад",
-        views: ["warehouse", "procurement"],
-    },
-    {
         title: "Команда",
+        description: "Персонал и смены",
         views: ["staff"],
     },
     {
-        title: "Аналитика",
-        views: ["reports"],
-    },
-    {
-        title: "Система",
-        views: ["company", "settings", "subscription"],
+        title: "Настройки",
+        description: "Заведение, залы, склад и подписка",
+        views: ["company", "floor", "warehouse", "procurement", "settings", "subscription"],
     },
 ];
 

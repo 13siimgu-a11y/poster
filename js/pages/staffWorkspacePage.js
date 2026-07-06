@@ -83,6 +83,7 @@ function renderWorkspace() {
     if (!root || !currentCompany) {
         return;
     }
+    const shift = getOpenShift();
     root.innerHTML = `
         <div class="workspace-minimal-top">
             <button class="workspace-burger" type="button" data-work-action="toggle-menu" aria-label="Открыть меню">☰</button>
@@ -93,12 +94,12 @@ function renderWorkspace() {
         </div>
         <button class="workspace-action-backdrop" type="button" data-work-action="toggle-menu" aria-label="Закрыть меню" hidden></button>
         <div class="workspace-action-drawer">
-            <button type="button" data-work-action="reports">Отчет</button>
             <button type="button" data-work-action="receipts">Архив чеков</button>
-            <button type="button" data-work-action="open-shift">Открыть смену</button>
-            <button type="button" data-work-action="add-product">Добавить меню</button>
+            <button type="button" data-work-action="reports">Отчет</button>
+            <button type="button" data-work-action="${shift ? "close-shift" : "open-shift"}">${shift ? "Закрыть смену" : "Открыть смену"}</button>
+            <button type="button" data-work-action="add-product">Добавить товар</button>
             <button type="button" data-work-action="add-category">Добавить категорию</button>
-            <button type="button" data-work-action="print">Печатать чек</button>
+            <button type="button" data-work-action="print">Печать чека</button>
             <button type="button" data-work-action="logout">Выйти</button>
         </div>
         <div class="workspace-layout" id="workspaceLayout"></div>
@@ -235,7 +236,7 @@ function renderUnifiedWorkspace() {
     const halls = loadFloor(currentCompany.id).filter((hall) => !hall.archived);
     const categories = loadCategories(currentCompany.id).filter((category) => category.active);
     const order = getActiveOrder();
-    const canQuickSale = ["cashier", "bartender", "barmen"].includes(currentUser.role);
+    const canQuickSale = currentUser.role === "cashier";
 
     if (!order) {
         return `
@@ -1749,6 +1750,13 @@ function handleWorkspaceAction(action) {
     if (action === "open-shift") {
         setWorkspaceMenuOpen(false);
         openShiftModal();
+        renderWorkspace();
+        return;
+    }
+
+    if (action === "close-shift") {
+        setWorkspaceMenuOpen(false);
+        closeShiftModal();
         renderWorkspace();
         return;
     }

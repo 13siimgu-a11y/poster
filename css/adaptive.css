@@ -96,7 +96,7 @@
 
     .header__actions {
         top: auto;
-        bottom: 20px;
+        bottom: max(20px, env(safe-area-inset-bottom));
         grid-template-columns: 1fr;
         gap: 12px;
         max-height: 190px;
@@ -202,7 +202,7 @@
     }
 
     .header__actions {
-        bottom: 14px;
+        bottom: max(14px, env(safe-area-inset-bottom));
         padding: 14px;
         border-radius: 20px;
     }
