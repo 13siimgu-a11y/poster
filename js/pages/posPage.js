@@ -30,6 +30,7 @@ import {
     shareReceiptForIos,
 } from "../bluetoothPrinter.js";
 import { loadProducts } from "../products.js";
+import { printReceiptElement } from "../receiptPrintFrame.js";
 
 let currentCompany = null;
 let currentUser = null;
@@ -428,9 +429,11 @@ function bindReceiptPrintActions(receipt) {
 function printCurrentReceiptPreview(button) {
     document.querySelectorAll(".print-receipt").forEach((receipt) => receipt.classList.remove("is-print-target"));
     const modalBody = button.closest("#posModalBody");
-    applyReceiptPaperWidth(modalBody, Number(modalBody?.querySelector("[data-hoin-paper-width]")?.value || 58));
-    modalBody?.querySelector(".print-receipt")?.classList.add("is-print-target");
-    window.print();
+    const paperWidth = Number(modalBody?.querySelector("[data-hoin-paper-width]")?.value || 58);
+    applyReceiptPaperWidth(modalBody, paperWidth);
+    const receiptElement = modalBody?.querySelector(".print-receipt");
+    receiptElement?.classList.add("is-print-target");
+    printReceiptElement(receiptElement, paperWidth);
 }
 
 function applyReceiptPaperWidth(root, paperWidth) {

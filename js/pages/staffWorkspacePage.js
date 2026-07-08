@@ -27,6 +27,7 @@ import {
     selectHoinPrinter,
     shareReceiptForIos,
 } from "../bluetoothPrinter.js";
+import { printReceiptElement } from "../receiptPrintFrame.js";
 import { storage, STORAGE_KEYS } from "../storage.js";
 import { changeTableStatus, createTable, loadTables, TABLE_STATUSES, updateTable } from "../tables.js";
 
@@ -1143,9 +1144,11 @@ function bindWorkspacePrintActions(receipt) {
 function printCurrentWorkspaceReceipt(button) {
     document.querySelectorAll(".print-receipt").forEach((receipt) => receipt.classList.remove("is-print-target"));
     const modalContent = button.closest(".workspace-modal__content");
-    applyWorkspaceReceiptPaperWidth(modalContent, Number(modalContent?.querySelector("[data-work-hoin-paper-width]")?.value || 58));
-    modalContent?.querySelector(".print-receipt")?.classList.add("is-print-target");
-    window.print();
+    const paperWidth = Number(modalContent?.querySelector("[data-work-hoin-paper-width]")?.value || 58);
+    applyWorkspaceReceiptPaperWidth(modalContent, paperWidth);
+    const receiptElement = modalContent?.querySelector(".print-receipt");
+    receiptElement?.classList.add("is-print-target");
+    printReceiptElement(receiptElement, paperWidth);
 }
 
 function applyWorkspaceReceiptPaperWidth(root, paperWidth) {

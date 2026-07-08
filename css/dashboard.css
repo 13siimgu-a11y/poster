@@ -1921,80 +1921,8 @@ textarea {
 }
 
 @media print {
-    @page {
-        size: 58mm auto;
-        margin: 0;
-    }
-
-    @page receipt58 {
-        size: 58mm auto;
-        margin: 0;
-    }
-
-    @page receipt80 {
-        size: 80mm auto;
-        margin: 0;
-    }
-
-    html,
     body {
-        width: 58mm;
-        min-width: 0;
-        margin: 0 !important;
-        padding: 0 !important;
         background: #fff !important;
-    }
-
-    body * {
-        visibility: hidden !important;
-    }
-
-    .print-receipt.is-print-target,
-    .print-receipt.is-print-target * {
-        visibility: visible !important;
-    }
-
-    .print-receipt.is-print-target {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 58mm;
-        max-width: 58mm;
-        margin: 0;
-        padding: 1.5mm;
-        border: 0;
-        box-shadow: none;
-        font-size: 14px;
-        line-height: 1.32;
-        page: receipt58;
-    }
-
-    .print-receipt.is-print-target.print-receipt--80mm {
-        width: 80mm;
-        max-width: 80mm;
-        padding: 3mm;
-        page: receipt80;
-    }
-
-    .print-receipt.is-print-target h2 {
-        font-size: 18px;
-    }
-
-    .print-receipt.is-print-target th,
-    .print-receipt.is-print-target td {
-        padding: 4px 1px;
-    }
-
-    .print-receipt.is-print-target th {
-        font-size: 12px;
-    }
-
-    .print-receipt.is-print-target .print-receipt__item small {
-        font-size: 12px;
-    }
-
-    .print-receipt.is-print-target .print-receipt__grand-total {
-        font-size: 17px;
     }
 }
 
