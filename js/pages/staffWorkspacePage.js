@@ -511,7 +511,7 @@ function renderActiveOrder() {
             <button type="button" data-order-sheet="peek">Свернуть</button>
             <button type="button" data-order-sheet="open">Заказ</button>
             <button type="button" data-order-sheet="full">Полностью</button>
-        </div>про
+        </div>
         <div class="workspace-order-head">
             <div>
                 <span>${escapeHtml(table?.name || "Стол")}</span>
@@ -1118,12 +1118,18 @@ function renderWorkspacePrintActions() {
 }
 
 function bindWorkspacePrintActions(receipt) {
-    document.querySelector("[data-work-print-browser]")?.addEventListener("click", () => window.print());
+    document.querySelector("[data-work-print-browser]")?.addEventListener("click", (event) => printCurrentWorkspaceReceipt(event.currentTarget));
     document.querySelector("[data-work-print-hoin]")?.addEventListener("click", (event) => printWorkspaceReceiptWithHoin(receipt, event.currentTarget));
     document.querySelector("[data-work-configure-hoin]")?.addEventListener("click", (event) => configureWorkspaceHoinPrinter(event.currentTarget));
     document.querySelector("[data-work-hoin-paper-width]")?.addEventListener("change", (event) => {
         saveHoinPrinterSettings({ paperWidth: Number(event.currentTarget.value || 80) });
     });
+}
+
+function printCurrentWorkspaceReceipt(button) {
+    document.querySelectorAll(".print-receipt").forEach((receipt) => receipt.classList.remove("is-print-target"));
+    button.closest(".workspace-modal__content")?.querySelector(".print-receipt")?.classList.add("is-print-target");
+    window.print();
 }
 
 async function printWorkspaceReceiptWithHoin(receipt, button) {

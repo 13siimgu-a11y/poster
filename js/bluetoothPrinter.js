@@ -79,9 +79,7 @@ export function getHoinPrinterStatus() {
 export async function selectHoinPrinter() {
     const device = await requestHoinDevice();
     const server = await device.gatt.connect();
-    const characteristic = await findWritableCharacteristic(server);
-
-    await writeEscPos(characteristic, "NO FACE POS\nHOIN Bluetooth OK\n\n");
+    await findWritableCharacteristic(server);
     device.gatt.disconnect();
 
     return saveHoinPrinterSettings({
@@ -158,15 +156,19 @@ function buildEscPosPayload(text) {
     const normalizedText = normalizePrinterText(text);
     const encoder = new TextEncoder();
     const init = new Uint8Array([0x1B, 0x40]);
+    const biggerText = new Uint8Array([0x1B, 0x21, 0x10]);
     const alignLeft = new Uint8Array([0x1B, 0x61, 0x00]);
     const body = encoder.encode(normalizedText);
+    const normalText = new Uint8Array([0x1B, 0x21, 0x00]);
     const feedAndCut = new Uint8Array([0x0A, 0x0A, 0x0A, 0x1D, 0x56, 0x00]);
-    const payload = new Uint8Array(init.length + alignLeft.length + body.length + feedAndCut.length);
+    const payload = new Uint8Array(init.length + biggerText.length + alignLeft.length + body.length + normalText.length + feedAndCut.length);
 
     payload.set(init, 0);
-    payload.set(alignLeft, init.length);
-    payload.set(body, init.length + alignLeft.length);
-    payload.set(feedAndCut, init.length + alignLeft.length + body.length);
+    payload.set(biggerText, init.length);
+    payload.set(alignLeft, init.length + biggerText.length);
+    payload.set(body, init.length + biggerText.length + alignLeft.length);
+    payload.set(normalText, init.length + biggerText.length + alignLeft.length + body.length);
+    payload.set(feedAndCut, init.length + biggerText.length + alignLeft.length + body.length + normalText.length);
 
     return payload;
 }

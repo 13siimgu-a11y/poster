@@ -403,12 +403,18 @@ function showPrintPreview(receipt) {
 }
 
 function bindReceiptPrintActions(receipt) {
-    document.querySelector("[data-print-browser]")?.addEventListener("click", () => window.print());
+    document.querySelector("[data-print-browser]")?.addEventListener("click", (event) => printCurrentReceiptPreview(event.currentTarget));
     document.querySelector("[data-print-hoin]")?.addEventListener("click", (event) => printReceiptWithHoin(receipt, event.currentTarget));
     document.querySelector("[data-configure-hoin]")?.addEventListener("click", (event) => configureHoinPrinter(event.currentTarget));
     document.querySelector("[data-hoin-paper-width]")?.addEventListener("change", (event) => {
         saveHoinPrinterSettings({ paperWidth: Number(event.currentTarget.value || 80) });
     });
+}
+
+function printCurrentReceiptPreview(button) {
+    document.querySelectorAll(".print-receipt").forEach((receipt) => receipt.classList.remove("is-print-target"));
+    button.closest("#posModalBody")?.querySelector(".print-receipt")?.classList.add("is-print-target");
+    window.print();
 }
 
 async function printReceiptWithHoin(receipt, button) {
