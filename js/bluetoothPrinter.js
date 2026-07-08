@@ -1,7 +1,7 @@
 const SETTINGS_KEY = "posPosterHoinPrinterSettings";
 
 const DEFAULT_SETTINGS = {
-    paperWidth: 80,
+    paperWidth: 58,
     chunkSize: 180,
     lastDeviceName: "",
 };

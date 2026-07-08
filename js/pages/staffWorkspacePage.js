@@ -1109,8 +1109,8 @@ function renderWorkspacePrintActions() {
             <label class="receipt-printer-setting">
                 Лента HOIN
                 <select data-work-hoin-paper-width>
-                    <option value="80" ${Number(settings.paperWidth) === 80 ? "selected" : ""}>80 мм</option>
                     <option value="58" ${Number(settings.paperWidth) === 58 ? "selected" : ""}>58 мм</option>
+                    <option value="80" ${Number(settings.paperWidth) === 80 ? "selected" : ""}>80 мм</option>
                 </select>
             </label>
             <button class="primary-btn" type="button" data-work-print-browser>Обычная печать</button>
@@ -1127,25 +1127,40 @@ function renderWorkspacePrintActions() {
 }
 
 function bindWorkspacePrintActions(receipt) {
+    applyWorkspaceReceiptPaperWidth(document.querySelector(".workspace-modal__content"), loadHoinPrinterSettings().paperWidth);
     document.querySelector("[data-work-print-browser]")?.addEventListener("click", (event) => printCurrentWorkspaceReceipt(event.currentTarget));
     document.querySelector("[data-work-print-hoin]")?.addEventListener("click", (event) => printWorkspaceReceiptWithHoin(receipt, event.currentTarget));
     document.querySelector("[data-work-configure-hoin]")?.addEventListener("click", (event) => configureWorkspaceHoinPrinter(event.currentTarget));
     document.querySelector("[data-work-copy-ios-receipt]")?.addEventListener("click", (event) => copyWorkspaceIosReceipt(receipt, event.currentTarget));
     document.querySelector("[data-work-open-hoin-app]")?.addEventListener("click", openHoinPrinterAppStore);
     document.querySelector("[data-work-hoin-paper-width]")?.addEventListener("change", (event) => {
-        saveHoinPrinterSettings({ paperWidth: Number(event.currentTarget.value || 80) });
+        const paperWidth = Number(event.currentTarget.value || 58);
+        saveHoinPrinterSettings({ paperWidth });
+        applyWorkspaceReceiptPaperWidth(document.querySelector(".workspace-modal__content"), paperWidth);
     });
 }
 
 function printCurrentWorkspaceReceipt(button) {
     document.querySelectorAll(".print-receipt").forEach((receipt) => receipt.classList.remove("is-print-target"));
-    button.closest(".workspace-modal__content")?.querySelector(".print-receipt")?.classList.add("is-print-target");
+    const modalContent = button.closest(".workspace-modal__content");
+    applyWorkspaceReceiptPaperWidth(modalContent, Number(modalContent?.querySelector("[data-work-hoin-paper-width]")?.value || 58));
+    modalContent?.querySelector(".print-receipt")?.classList.add("is-print-target");
     window.print();
+}
+
+function applyWorkspaceReceiptPaperWidth(root, paperWidth) {
+    const receipt = root?.querySelector(".print-receipt");
+    if (!receipt) {
+        return;
+    }
+
+    receipt.classList.toggle("print-receipt--58mm", Number(paperWidth) !== 80);
+    receipt.classList.toggle("print-receipt--80mm", Number(paperWidth) === 80);
 }
 
 async function printWorkspaceReceiptWithHoin(receipt, button) {
     const settings = saveHoinPrinterSettings({
-        paperWidth: Number(document.querySelector("[data-work-hoin-paper-width]")?.value || 80),
+        paperWidth: Number(document.querySelector("[data-work-hoin-paper-width]")?.value || 58),
     });
     const text = buildReceiptPrinterText(receipt, currentCompany, settings);
 
@@ -1169,7 +1184,7 @@ async function configureWorkspaceHoinPrinter(button) {
     }
 
     saveHoinPrinterSettings({
-        paperWidth: Number(document.querySelector("[data-work-hoin-paper-width]")?.value || 80),
+        paperWidth: Number(document.querySelector("[data-work-hoin-paper-width]")?.value || 58),
     });
 
     await runWorkspacePrinterAction(button, "Подключение...", async () => {

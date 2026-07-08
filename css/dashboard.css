@@ -1782,7 +1782,7 @@ textarea {
 .print-receipt {
     display: grid;
     gap: 8px;
-    width: min(100%, 80mm);
+    width: min(100%, 58mm);
     max-width: 360px;
     margin: 0 auto 20px;
     padding: 12px;
@@ -1793,6 +1793,14 @@ textarea {
     font-size: 14px;
     line-height: 1.35;
     text-align: center;
+}
+
+.print-receipt--80mm {
+    width: min(100%, 80mm);
+}
+
+.print-receipt--58mm {
+    width: min(100%, 58mm);
 }
 
 .print-receipt__header,
@@ -1914,13 +1922,23 @@ textarea {
 
 @media print {
     @page {
+        size: 58mm auto;
+        margin: 0;
+    }
+
+    @page receipt58 {
+        size: 58mm auto;
+        margin: 0;
+    }
+
+    @page receipt80 {
         size: 80mm auto;
         margin: 0;
     }
 
     html,
     body {
-        width: 80mm;
+        width: 58mm;
         min-width: 0;
         margin: 0 !important;
         padding: 0 !important;
@@ -1940,27 +1958,43 @@ textarea {
         position: absolute;
         top: 0;
         left: 0;
-        width: 80mm;
-        max-width: 80mm;
+        width: 58mm;
+        max-width: 58mm;
         margin: 0;
-        padding: 3mm;
+        padding: 1.5mm;
         border: 0;
         box-shadow: none;
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1.32;
+        page: receipt58;
+    }
+
+    .print-receipt.is-print-target.print-receipt--80mm {
+        width: 80mm;
+        max-width: 80mm;
+        padding: 3mm;
+        page: receipt80;
     }
 
     .print-receipt.is-print-target h2 {
-        font-size: 17px;
+        font-size: 18px;
     }
 
     .print-receipt.is-print-target th,
     .print-receipt.is-print-target td {
-        padding: 5px 1px;
+        padding: 4px 1px;
+    }
+
+    .print-receipt.is-print-target th {
+        font-size: 12px;
+    }
+
+    .print-receipt.is-print-target .print-receipt__item small {
+        font-size: 12px;
     }
 
     .print-receipt.is-print-target .print-receipt__grand-total {
-        font-size: 16px;
+        font-size: 17px;
     }
 }
 
