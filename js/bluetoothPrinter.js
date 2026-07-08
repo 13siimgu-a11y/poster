@@ -49,15 +49,14 @@ export function saveHoinPrinterSettings(patch = {}) {
 }
 
 export function getHoinPrinterStatus() {
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
-        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isIos = isIosDevice();
     const isBluetoothSupported = Boolean(navigator.bluetooth?.requestDevice);
 
     if (isIos) {
         return {
             isIos,
             isBluetoothSupported,
-            message: "На iPhone браузер не дает сайту прямой Bluetooth-доступ к HOIN. Используйте обычную печать через AirPrint/системное меню или фирменное приложение принтера.",
+            message: "iPhone: установите Hoin Printer из App Store, подключите H58 в приложении, затем нажмите Share to HOIN iOS и выберите Hoin Printer. Прямой Bluetooth из браузера iOS запрещен.",
         };
     }
 
@@ -76,6 +75,45 @@ export function getHoinPrinterStatus() {
     };
 }
 
+export function isIosDevice() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+export async function shareReceiptForIos(text, title = "NO FACE receipt") {
+    if (navigator.share) {
+        await navigator.share({
+            title,
+            text,
+        });
+        return "shared";
+    }
+
+    await copyReceiptText(text);
+    return "copied";
+}
+
+export async function copyReceiptText(text) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+}
+
+export function openHoinPrinterAppStore() {
+    window.location.href = "itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?term=Hoin%20Printer";
+}
+
 export async function selectHoinPrinter() {
     const device = await requestHoinDevice();
     const server = await device.gatt.connect();
@@ -89,6 +127,10 @@ export async function selectHoinPrinter() {
 
 export async function printTextToHoinBluetooth(text, options = {}) {
     const status = getHoinPrinterStatus();
+
+    if (status.isIos) {
+        throw new Error(status.message);
+    }
 
     if (!status.isBluetoothSupported) {
         throw new Error(status.message);

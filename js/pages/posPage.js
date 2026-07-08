@@ -19,11 +19,15 @@ import {
     updateReceiptItem,
 } from "../pos.js";
 import {
+    copyReceiptText,
     getHoinPrinterStatus,
+    isIosDevice,
     loadHoinPrinterSettings,
+    openHoinPrinterAppStore,
     printTextToHoinBluetooth,
     saveHoinPrinterSettings,
     selectHoinPrinter,
+    shareReceiptForIos,
 } from "../bluetoothPrinter.js";
 import { loadProducts } from "../products.js";
 
@@ -380,6 +384,7 @@ function printActiveReceipt() {
 function showPrintPreview(receipt) {
     const settings = loadHoinPrinterSettings();
     const printerStatus = getHoinPrinterStatus();
+    const isIos = isIosDevice();
     document.getElementById("posModalTitle").textContent = "Печать чека";
     document.getElementById("posModalBody").innerHTML = `
         ${printReceiptHtml(receipt, currentCompany)}
@@ -392,8 +397,12 @@ function showPrintPreview(receipt) {
                 </select>
             </label>
             <button class="primary-btn" type="button" data-print-browser>Обычная печать</button>
-            <button class="secondary-btn" type="button" data-print-hoin>Bluetooth HOIN</button>
+            <button class="secondary-btn" type="button" data-print-hoin>${isIos ? "Share to HOIN iOS" : "Bluetooth HOIN"}</button>
             <button class="secondary-btn" type="button" data-configure-hoin>Настроить HOIN</button>
+            ${isIos ? `
+                <button class="secondary-btn" type="button" data-copy-ios-receipt>Copy receipt</button>
+                <button class="secondary-btn" type="button" data-open-hoin-app>Open Hoin Printer app</button>
+            ` : ""}
             <p class="printer-hint">${helpers.escapeHtml(printerStatus.message)}</p>
             ${settings.lastDeviceName ? `<small class="printer-hint">Последний принтер: ${helpers.escapeHtml(settings.lastDeviceName)}</small>` : ""}
         </div>
@@ -406,6 +415,8 @@ function bindReceiptPrintActions(receipt) {
     document.querySelector("[data-print-browser]")?.addEventListener("click", (event) => printCurrentReceiptPreview(event.currentTarget));
     document.querySelector("[data-print-hoin]")?.addEventListener("click", (event) => printReceiptWithHoin(receipt, event.currentTarget));
     document.querySelector("[data-configure-hoin]")?.addEventListener("click", (event) => configureHoinPrinter(event.currentTarget));
+    document.querySelector("[data-copy-ios-receipt]")?.addEventListener("click", (event) => copyIosReceipt(receipt, event.currentTarget));
+    document.querySelector("[data-open-hoin-app]")?.addEventListener("click", openHoinPrinterAppStore);
     document.querySelector("[data-hoin-paper-width]")?.addEventListener("change", (event) => {
         saveHoinPrinterSettings({ paperWidth: Number(event.currentTarget.value || 80) });
     });
@@ -424,12 +435,24 @@ async function printReceiptWithHoin(receipt, button) {
     const text = buildReceiptPrinterText(receipt, currentCompany, settings);
 
     await runPrinterAction(button, "Отправляю...", async () => {
+        if (isIosDevice()) {
+            const result = await shareReceiptForIos(text, `Receipt ${receipt.number || ""}`.trim());
+            helpers.showToast(result === "shared" ? "Выберите Hoin Printer в меню Share" : "Чек скопирован");
+            return;
+        }
+
         await printTextToHoinBluetooth(text, settings);
         helpers.showToast("Чек отправлен на HOIN");
     });
 }
 
 async function configureHoinPrinter(button) {
+    if (isIosDevice()) {
+        openHoinPrinterAppStore();
+        helpers.showToast("На iPhone настройте HOIN в приложении Hoin Printer");
+        return;
+    }
+
     saveHoinPrinterSettings({
         paperWidth: Number(document.querySelector("[data-hoin-paper-width]")?.value || 80),
     });
@@ -437,6 +460,18 @@ async function configureHoinPrinter(button) {
     await runPrinterAction(button, "Подключение...", async () => {
         const settings = await selectHoinPrinter();
         helpers.showToast(`HOIN подключен: ${settings.lastDeviceName}`);
+    });
+}
+
+async function copyIosReceipt(receipt, button) {
+    const settings = saveHoinPrinterSettings({
+        paperWidth: Number(document.querySelector("[data-hoin-paper-width]")?.value || 58),
+    });
+    const text = buildReceiptPrinterText(receipt, currentCompany, settings);
+
+    await runPrinterAction(button, "Copying...", async () => {
+        await copyReceiptText(text);
+        helpers.showToast("Receipt copied");
     });
 }
 
