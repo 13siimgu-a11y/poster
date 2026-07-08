@@ -241,24 +241,105 @@ export function createReceiptQr(receipt) {
 
 export function printReceiptHtml(receipt, company) {
     const calculatedReceipt = calculateReceipt(receipt);
+    const currency = company?.settings?.currency || "USD";
+    const address = [
+        company?.address?.street,
+        company?.address?.city,
+    ].filter(Boolean).join(", ");
+    const paidAt = calculatedReceipt.paidAt || calculatedReceipt.updatedAt || calculatedReceipt.createdAt || new Date().toISOString();
+    const discountPercent = getReceiptDiscountPercent(calculatedReceipt);
     const rows = calculatedReceipt.items.map((item) => `
-        <tr>
-            <td>${item.name}</td>
-            <td>${item.quantity}</td>
-            <td>${formatMoney(item.total, company.settings.currency)}</td>
+        <tr class="print-receipt__item">
+            <td>
+                <strong>${escapeReceiptText(item.name || "Позиция")}</strong>
+                ${item.comment ? `<small>${escapeReceiptText(item.comment)}</small>` : ""}
+            </td>
+            <td>${formatReceiptQuantity(item.quantity)}</td>
+            <td>${formatMoney(Number(item.price || 0), currency)}</td>
+            <td>${formatMoney(getReceiptItemTotal(item), currency)}</td>
         </tr>
     `).join("");
 
     return `
-        <section class="print-receipt">
-            <h2>${company.name}</h2>
-            <p>${company.address?.street || ""}</p>
-            <p>Чек: ${calculatedReceipt.number}</p>
-            <table>${rows}</table>
-            <strong>Итого: ${formatMoney(calculatedReceipt.total, company.settings.currency)}</strong>
-            <img src="${calculatedReceipt.qrCode}" alt="QR">
+        <section class="print-receipt" data-printer="hoin-thermal">
+            <header class="print-receipt__header">
+                <h2>${escapeReceiptText(company?.name || "NO FACE POS")}</h2>
+                ${address ? `<p>${escapeReceiptText(address)}</p>` : ""}
+                <p>Чек: ${escapeReceiptText(calculatedReceipt.number || "Без номера")}</p>
+                <p>${formatReceiptDate(paidAt)}</p>
+            </header>
+            <table class="print-receipt__table" aria-label="Позиции чека">
+                <thead>
+                    <tr>
+                        <th>Блюдо</th>
+                        <th>Кол.</th>
+                        <th>Цена</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows || `
+                        <tr>
+                            <td colspan="4">Позиции отсутствуют</td>
+                        </tr>
+                    `}
+                </tbody>
+            </table>
+            <div class="print-receipt__totals">
+                <p><span>Сумма блюд</span><strong>${formatMoney(calculatedReceipt.subtotal, currency)}</strong></p>
+                ${Number(calculatedReceipt.discount || 0) ? `<p><span>Скидка ${discountPercent}%</span><strong>-${formatMoney(calculatedReceipt.discount, currency)}</strong></p>` : ""}
+                ${Number(calculatedReceipt.surcharge || 0) ? `<p><span>Сервис/надбавка</span><strong>${formatMoney(calculatedReceipt.surcharge, currency)}</strong></p>` : ""}
+                <p class="print-receipt__grand-total"><span>Итого</span><strong>${formatMoney(calculatedReceipt.total, currency)}</strong></p>
+            </div>
+            <footer class="print-receipt__footer">
+                <p>Спасибо за покупку</p>
+                <p>NO FACE POS</p>
+                ${calculatedReceipt.qrCode ? `<img src="${calculatedReceipt.qrCode}" alt="QR">` : ""}
+            </footer>
         </section>
     `;
+}
+
+function getReceiptItemTotal(item) {
+    if (Number.isFinite(Number(item.total))) {
+        return Number(item.total);
+    }
+
+    return Number(item.price || 0) * Number(item.quantity || 1);
+}
+
+function formatReceiptQuantity(quantity) {
+    const value = Number(quantity || 1);
+    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function getReceiptDiscountPercent(receipt) {
+    const subtotal = Number(receipt.subtotal || 0);
+
+    if (!subtotal) {
+        return 0;
+    }
+
+    return Math.round((Number(receipt.discount || 0) / subtotal) * 10000) / 100;
+}
+
+function formatReceiptDate(value) {
+    return new Date(value).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function escapeReceiptText(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 export function getAvailablePosProducts(companyId) {

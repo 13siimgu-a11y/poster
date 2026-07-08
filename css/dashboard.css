@@ -1781,12 +1781,36 @@ textarea {
 
 .print-receipt {
     display: grid;
-    gap: 10px;
+    gap: 8px;
+    width: min(100%, 80mm);
     max-width: 360px;
     margin: 0 auto 20px;
-    padding: 20px;
+    padding: 12px;
     border: 1px dashed #CBD5E1;
+    background: #fff;
+    color: #000;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.25;
     text-align: center;
+}
+
+.print-receipt__header,
+.print-receipt__footer,
+.print-receipt__totals {
+    display: grid;
+    gap: 4px;
+}
+
+.print-receipt h2,
+.print-receipt p {
+    margin: 0;
+}
+
+.print-receipt h2 {
+    font-size: 16px;
+    line-height: 1.15;
+    text-transform: uppercase;
 }
 
 .print-receipt table {
@@ -1794,16 +1818,111 @@ textarea {
     border-collapse: collapse;
 }
 
+.print-receipt th,
 .print-receipt td {
-    padding: 8px 0;
-    border-bottom: 1px solid #E2E8F0;
+    padding: 5px 2px;
+    border-bottom: 1px dashed #94A3B8;
     text-align: left;
+    vertical-align: top;
+}
+
+.print-receipt th {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.print-receipt th:nth-child(n + 2),
+.print-receipt td:nth-child(n + 2) {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.print-receipt__item strong,
+.print-receipt__item small {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.print-receipt__item small {
+    margin-top: 2px;
+    color: #475569;
+    font-size: 10px;
+}
+
+.print-receipt__totals {
+    padding-top: 4px;
+    border-top: 1px dashed #000;
+}
+
+.print-receipt__totals p {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.print-receipt__grand-total {
+    padding-top: 5px;
+    border-top: 1px solid #000;
+    font-size: 15px;
+    font-weight: 900;
 }
 
 .print-receipt img {
-    width: 120px;
-    height: 120px;
+    width: 86px;
+    height: 86px;
     margin: 0 auto;
+}
+
+@media print {
+    @page {
+        size: 80mm auto;
+        margin: 0;
+    }
+
+    html,
+    body {
+        width: 80mm;
+        min-width: 0;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    .print-receipt,
+    .print-receipt * {
+        visibility: visible !important;
+    }
+
+    .print-receipt {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 80mm;
+        max-width: 80mm;
+        margin: 0;
+        padding: 3mm;
+        border: 0;
+        box-shadow: none;
+        font-size: 10px;
+    }
+
+    .print-receipt h2 {
+        font-size: 14px;
+    }
+
+    .print-receipt th,
+    .print-receipt td {
+        padding: 3px 1px;
+    }
+
+    .print-receipt__grand-total {
+        font-size: 13px;
+    }
 }
 
 .product-filters {
@@ -5311,6 +5430,12 @@ button.is-rippling::after {
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
+}
+
+.workspace-discount-value small {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
 }
 
 .workspace-discount-value button {

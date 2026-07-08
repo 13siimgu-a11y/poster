@@ -177,7 +177,7 @@ function renderActiveReceipt() {
 
     activeReceipt = calculateReceipt(activeReceipt);
     document.getElementById("activeReceiptNumber").textContent = activeReceipt.number;
-    document.getElementById("receiptDiscount").value = activeReceipt.discount || 0;
+    document.getElementById("receiptDiscount").value = getReceiptDiscountPercent(activeReceipt);
     document.getElementById("receiptSurcharge").value = activeReceipt.surcharge || 0;
     document.getElementById("receiptSubtotal").textContent = formatMoney(activeReceipt.subtotal, currentCompany.settings.currency);
     document.getElementById("receiptTotal").textContent = formatMoney(activeReceipt.total, currentCompany.settings.currency);
@@ -247,9 +247,21 @@ function updateReceiptAdjustments() {
         return;
     }
 
-    activeReceipt = applyDiscount(activeReceipt, document.getElementById("receiptDiscount").value);
+    const discountPercent = Math.min(100, Math.max(0, Number(document.getElementById("receiptDiscount").value || 0)));
+    const discountAmount = Math.round((Number(activeReceipt.subtotal || 0) * discountPercent / 100) * 100) / 100;
+    activeReceipt = applyDiscount(activeReceipt, discountAmount);
     activeReceipt = applySurcharge(activeReceipt, document.getElementById("receiptSurcharge").value);
     renderActiveReceipt();
+}
+
+function getReceiptDiscountPercent(receipt) {
+    const subtotal = Number(receipt.subtotal || 0);
+
+    if (!subtotal) {
+        return 0;
+    }
+
+    return Math.round((Number(receipt.discount || 0) / subtotal) * 10000) / 100;
 }
 
 function holdActiveReceipt() {

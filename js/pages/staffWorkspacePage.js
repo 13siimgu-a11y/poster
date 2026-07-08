@@ -503,7 +503,7 @@ function renderActiveOrder() {
             <button type="button" data-order-sheet="peek">Свернуть</button>
             <button type="button" data-order-sheet="open">Заказ</button>
             <button type="button" data-order-sheet="full">Полностью</button>
-        </div>
+        </div>про
         <div class="workspace-order-head">
             <div>
                 <span>${escapeHtml(table?.name || "Стол")}</span>
@@ -535,7 +535,8 @@ function renderActiveOrder() {
             <span>Подытог</span><strong>${formatMoney(order.subtotal, currentCompany.settings.currency)}</strong>
             <span>Скидка</span>
             <strong class="workspace-discount-value">
-                ${formatMoney(order.discount, currentCompany.settings.currency)}
+                ${getOrderDiscountPercent(order)}%
+                <small>-${formatMoney(order.discount, currentCompany.settings.currency)}</small>
                 <button type="button" data-order-action="discount">%</button>
             </strong>
             <span>Обслуживание</span><strong>${formatMoney(order.tax || 0, currentCompany.settings.currency)}</strong>
@@ -1106,6 +1107,16 @@ function openDiscountModal(order) {
         closeWorkspaceModal();
         renderActiveScreen();
     });
+}
+
+function getOrderDiscountPercent(order) {
+    const subtotal = Number(order.subtotal || 0);
+
+    if (!subtotal) {
+        return 0;
+    }
+
+    return Math.round((Number(order.discount || 0) / subtotal) * 10000) / 100;
 }
 
 function openTransferModal(order) {
