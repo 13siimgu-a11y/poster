@@ -8,6 +8,7 @@ import { idsEqual } from "../apiPersistence.js";
 import { createOrder, loadOrders, updateOrder, closeOrder, cancelOrder, transferOrder } from "../orders.js";
 import { createProduct, loadProducts } from "../products.js";
 import {
+    buildReceiptPrinterText,
     calculateReceipt,
     getAvailablePosProducts,
     loadCashRegisters,
@@ -15,6 +16,13 @@ import {
     printReceiptHtml,
     refundReceipt,
 } from "../pos.js";
+import {
+    getHoinPrinterStatus,
+    loadHoinPrinterSettings,
+    printTextToHoinBluetooth,
+    saveHoinPrinterSettings,
+    selectHoinPrinter,
+} from "../bluetoothPrinter.js";
 import { storage, STORAGE_KEYS } from "../storage.js";
 import { changeTableStatus, createTable, loadTables, TABLE_STATUSES, updateTable } from "../tables.js";
 
@@ -1082,9 +1090,78 @@ function printOrder(order) {
     });
     openWorkspaceModal("Печать чека", `
         ${printReceiptHtml(pseudoReceipt, currentCompany)}
-        <button class="primary-btn" type="button" data-work-print>Печать</button>
+        ${renderWorkspacePrintActions()}
     `);
-    document.querySelector("[data-work-print]").addEventListener("click", () => window.print());
+    bindWorkspacePrintActions(pseudoReceipt);
+}
+
+function renderWorkspacePrintActions() {
+    const settings = loadHoinPrinterSettings();
+    const printerStatus = getHoinPrinterStatus();
+
+    return `
+        <div class="receipt-print-actions">
+            <label class="receipt-printer-setting">
+                Лента HOIN
+                <select data-work-hoin-paper-width>
+                    <option value="80" ${Number(settings.paperWidth) === 80 ? "selected" : ""}>80 мм</option>
+                    <option value="58" ${Number(settings.paperWidth) === 58 ? "selected" : ""}>58 мм</option>
+                </select>
+            </label>
+            <button class="primary-btn" type="button" data-work-print-browser>Обычная печать</button>
+            <button class="secondary-btn" type="button" data-work-print-hoin>Bluetooth HOIN</button>
+            <button class="secondary-btn" type="button" data-work-configure-hoin>Настроить HOIN</button>
+            <p class="printer-hint">${escapeHtml(printerStatus.message)}</p>
+            ${settings.lastDeviceName ? `<small class="printer-hint">Последний принтер: ${escapeHtml(settings.lastDeviceName)}</small>` : ""}
+        </div>
+    `;
+}
+
+function bindWorkspacePrintActions(receipt) {
+    document.querySelector("[data-work-print-browser]")?.addEventListener("click", () => window.print());
+    document.querySelector("[data-work-print-hoin]")?.addEventListener("click", (event) => printWorkspaceReceiptWithHoin(receipt, event.currentTarget));
+    document.querySelector("[data-work-configure-hoin]")?.addEventListener("click", (event) => configureWorkspaceHoinPrinter(event.currentTarget));
+    document.querySelector("[data-work-hoin-paper-width]")?.addEventListener("change", (event) => {
+        saveHoinPrinterSettings({ paperWidth: Number(event.currentTarget.value || 80) });
+    });
+}
+
+async function printWorkspaceReceiptWithHoin(receipt, button) {
+    const settings = saveHoinPrinterSettings({
+        paperWidth: Number(document.querySelector("[data-work-hoin-paper-width]")?.value || 80),
+    });
+    const text = buildReceiptPrinterText(receipt, currentCompany, settings);
+
+    await runWorkspacePrinterAction(button, "Отправляю...", async () => {
+        await printTextToHoinBluetooth(text, settings);
+        toast("Чек отправлен на HOIN");
+    });
+}
+
+async function configureWorkspaceHoinPrinter(button) {
+    saveHoinPrinterSettings({
+        paperWidth: Number(document.querySelector("[data-work-hoin-paper-width]")?.value || 80),
+    });
+
+    await runWorkspacePrinterAction(button, "Подключение...", async () => {
+        const settings = await selectHoinPrinter();
+        toast(`HOIN подключен: ${settings.lastDeviceName}`);
+    });
+}
+
+async function runWorkspacePrinterAction(button, pendingText, action) {
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = pendingText;
+
+    try {
+        await action();
+    } catch (error) {
+        toast(error.message || "Не удалось подключиться к принтеру");
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
 }
 
 function openDiscountModal(order) {
@@ -1400,9 +1477,9 @@ function printOrderLikeReceipt(item) {
     });
     openWorkspaceModal("Детали чека", `
         ${printReceiptHtml(receipt, currentCompany)}
-        <button class="primary-btn" type="button" data-work-print>Печать</button>
+        ${renderWorkspacePrintActions()}
     `);
-    document.querySelector("[data-work-print]").addEventListener("click", () => window.print());
+    bindWorkspacePrintActions(receipt);
 }
 
 function renderReports() {

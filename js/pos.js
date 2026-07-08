@@ -251,7 +251,7 @@ export function printReceiptHtml(receipt, company) {
     const rows = calculatedReceipt.items.map((item) => `
         <tr class="print-receipt__item">
             <td>
-                <strong>${escapeReceiptText(item.name || "Позиция")}</strong>
+                <strong>${escapeReceiptText(item.name || "Item")}</strong>
                 ${item.comment ? `<small>${escapeReceiptText(item.comment)}</small>` : ""}
             </td>
             <td>${formatReceiptQuantity(item.quantity)}</td>
@@ -265,39 +265,94 @@ export function printReceiptHtml(receipt, company) {
             <header class="print-receipt__header">
                 <h2>${escapeReceiptText(company?.name || "NO FACE POS")}</h2>
                 ${address ? `<p>${escapeReceiptText(address)}</p>` : ""}
-                <p>Чек: ${escapeReceiptText(calculatedReceipt.number || "Без номера")}</p>
+                <p>Receipt: ${escapeReceiptText(calculatedReceipt.number || "No number")}</p>
                 <p>${formatReceiptDate(paidAt)}</p>
             </header>
-            <table class="print-receipt__table" aria-label="Позиции чека">
+            <table class="print-receipt__table" aria-label="Receipt items">
                 <thead>
                     <tr>
-                        <th>Блюдо</th>
-                        <th>Кол.</th>
-                        <th>Цена</th>
-                        <th>Сумма</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Sum</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${rows || `
                         <tr>
-                            <td colspan="4">Позиции отсутствуют</td>
+                            <td colspan="4">No items</td>
                         </tr>
                     `}
                 </tbody>
             </table>
             <div class="print-receipt__totals">
-                <p><span>Сумма блюд</span><strong>${formatMoney(calculatedReceipt.subtotal, currency)}</strong></p>
-                ${Number(calculatedReceipt.discount || 0) ? `<p><span>Скидка ${discountPercent}%</span><strong>-${formatMoney(calculatedReceipt.discount, currency)}</strong></p>` : ""}
-                ${Number(calculatedReceipt.surcharge || 0) ? `<p><span>Сервис/надбавка</span><strong>${formatMoney(calculatedReceipt.surcharge, currency)}</strong></p>` : ""}
-                <p class="print-receipt__grand-total"><span>Итого</span><strong>${formatMoney(calculatedReceipt.total, currency)}</strong></p>
+                <p><span>Subtotal</span><strong>${formatMoney(calculatedReceipt.subtotal, currency)}</strong></p>
+                ${Number(calculatedReceipt.discount || 0) ? `<p><span>Discount ${discountPercent}%</span><strong>-${formatMoney(calculatedReceipt.discount, currency)}</strong></p>` : ""}
+                ${Number(calculatedReceipt.surcharge || 0) ? `<p><span>Service</span><strong>${formatMoney(calculatedReceipt.surcharge, currency)}</strong></p>` : ""}
+                <p class="print-receipt__grand-total"><span>Total</span><strong>${formatMoney(calculatedReceipt.total, currency)}</strong></p>
             </div>
             <footer class="print-receipt__footer">
-                <p>Спасибо за покупку</p>
+                <p>Thank you</p>
                 <p>NO FACE POS</p>
                 ${calculatedReceipt.qrCode ? `<img src="${calculatedReceipt.qrCode}" alt="QR">` : ""}
             </footer>
         </section>
     `;
+}
+
+export function buildReceiptPrinterText(receipt, company, options = {}) {
+    const calculatedReceipt = calculateReceipt(receipt);
+    const currency = company?.settings?.currency || "USD";
+    const columns = Number(options.paperWidth || 80) === 58 ? 32 : 42;
+    const address = [
+        company?.address?.street,
+        company?.address?.city,
+    ].filter(Boolean).join(", ");
+    const paidAt = calculatedReceipt.paidAt || calculatedReceipt.updatedAt || calculatedReceipt.createdAt || new Date().toISOString();
+    const discountPercent = getReceiptDiscountPercent(calculatedReceipt);
+    const lines = [];
+
+    lines.push(centerText(company?.name || "NO FACE POS", columns));
+    if (address) {
+        lines.push(...wrapPrinterText(address, columns).map((line) => centerText(line, columns)));
+    }
+    lines.push(repeatText("-", columns));
+    lines.push(`Receipt: ${calculatedReceipt.number || "No number"}`);
+    lines.push(formatReceiptDate(paidAt));
+    lines.push(repeatText("-", columns));
+
+    if (calculatedReceipt.items.length) {
+        calculatedReceipt.items.forEach((item) => {
+            const nameLines = wrapPrinterText(item.name || "Item", columns);
+            const quantity = formatReceiptQuantity(item.quantity);
+            const price = formatMoney(Number(item.price || 0), currency);
+            const total = formatMoney(getReceiptItemTotal(item), currency);
+
+            lines.push(...nameLines);
+            lines.push(pairText(`${quantity} x ${price}`, total, columns));
+            if (item.comment) {
+                lines.push(...wrapPrinterText(`* ${item.comment}`, columns));
+            }
+        });
+    } else {
+        lines.push("No items");
+    }
+
+    lines.push(repeatText("-", columns));
+    lines.push(pairText("Subtotal", formatMoney(calculatedReceipt.subtotal, currency), columns));
+    if (Number(calculatedReceipt.discount || 0)) {
+        lines.push(pairText(`Discount ${discountPercent}%`, `-${formatMoney(calculatedReceipt.discount, currency)}`, columns));
+    }
+    if (Number(calculatedReceipt.surcharge || 0)) {
+        lines.push(pairText("Service", formatMoney(calculatedReceipt.surcharge, currency), columns));
+    }
+    lines.push(repeatText("=", columns));
+    lines.push(pairText("TOTAL", formatMoney(calculatedReceipt.total, currency), columns));
+    lines.push(repeatText("=", columns));
+    lines.push(centerText("Thank you", columns));
+    lines.push(centerText("NO FACE POS", columns));
+
+    return `${lines.join("\n")}\n`;
 }
 
 function getReceiptItemTotal(item) {
@@ -324,7 +379,7 @@ function getReceiptDiscountPercent(receipt) {
 }
 
 function formatReceiptDate(value) {
-    return new Date(value).toLocaleString("ru-RU", {
+    return new Date(value).toLocaleString("en-US", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -334,12 +389,72 @@ function formatReceiptDate(value) {
 }
 
 function escapeReceiptText(value) {
-    return String(value ?? "")
+    return toEnglishReceiptText(value)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+function centerText(value, columns) {
+    const text = sanitizePrinterLine(value).slice(0, columns);
+    const padding = Math.max(0, Math.floor((columns - text.length) / 2));
+    return `${" ".repeat(padding)}${text}`;
+}
+
+function pairText(left, right, columns) {
+    const leftText = sanitizePrinterLine(left);
+    const rightText = sanitizePrinterLine(right);
+    const availableLeft = Math.max(4, columns - rightText.length - 1);
+    const clippedLeft = leftText.length > availableLeft ? leftText.slice(0, availableLeft - 1) : leftText;
+    const spacing = Math.max(1, columns - clippedLeft.length - rightText.length);
+
+    return `${clippedLeft}${" ".repeat(spacing)}${rightText}`;
+}
+
+function wrapPrinterText(value, columns) {
+    const text = sanitizePrinterLine(value);
+    const words = text.split(" ");
+    const lines = [];
+    let currentLine = "";
+
+    words.forEach((word) => {
+        if (!currentLine) {
+            currentLine = word;
+            return;
+        }
+
+        if (`${currentLine} ${word}`.length <= columns) {
+            currentLine = `${currentLine} ${word}`;
+        } else {
+            lines.push(currentLine);
+            currentLine = word;
+        }
+    });
+
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+
+    return lines.length ? lines : [""];
+}
+
+function repeatText(value, columns) {
+    return value.repeat(columns).slice(0, columns);
+}
+
+function sanitizePrinterLine(value) {
+    return toEnglishReceiptText(value).replace(/\s+/g, " ").trim();
+}
+
+function toEnglishReceiptText(value) {
+    const transliterationMap = {
+        А: "A", Б: "B", В: "V", Г: "G", Д: "D", Е: "E", Ё: "E", Ж: "Zh", З: "Z", И: "I", Й: "Y", К: "K", Л: "L", М: "M", Н: "N", О: "O", П: "P", Р: "R", С: "S", Т: "T", У: "U", Ф: "F", Х: "Kh", Ц: "Ts", Ч: "Ch", Ш: "Sh", Щ: "Sch", Ъ: "", Ы: "Y", Ь: "", Э: "E", Ю: "Yu", Я: "Ya",
+        а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+    };
+
+    return String(value ?? "").replace(/[А-Яа-яЁё]/g, (letter) => transliterationMap[letter] ?? letter);
 }
 
 export function getAvailablePosProducts(companyId) {

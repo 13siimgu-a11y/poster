@@ -4,6 +4,7 @@ import {
     addProductToReceipt,
     applyDiscount,
     applySurcharge,
+    buildReceiptPrinterText,
     calculateReceipt,
     createReceipt,
     getAvailablePosProducts,
@@ -17,6 +18,13 @@ import {
     reopenReceipt,
     updateReceiptItem,
 } from "../pos.js";
+import {
+    getHoinPrinterStatus,
+    loadHoinPrinterSettings,
+    printTextToHoinBluetooth,
+    saveHoinPrinterSettings,
+    selectHoinPrinter,
+} from "../bluetoothPrinter.js";
 import { loadProducts } from "../products.js";
 
 let currentCompany = null;
@@ -370,12 +378,75 @@ function printActiveReceipt() {
 }
 
 function showPrintPreview(receipt) {
+    const settings = loadHoinPrinterSettings();
+    const printerStatus = getHoinPrinterStatus();
     document.getElementById("posModalTitle").textContent = "Печать чека";
     document.getElementById("posModalBody").innerHTML = `
         ${printReceiptHtml(receipt, currentCompany)}
-        <button class="primary-btn" type="button" onclick="window.print()">Печать</button>
+        <div class="receipt-print-actions">
+            <label class="receipt-printer-setting">
+                Лента HOIN
+                <select data-hoin-paper-width>
+                    <option value="80" ${Number(settings.paperWidth) === 80 ? "selected" : ""}>80 мм</option>
+                    <option value="58" ${Number(settings.paperWidth) === 58 ? "selected" : ""}>58 мм</option>
+                </select>
+            </label>
+            <button class="primary-btn" type="button" data-print-browser>Обычная печать</button>
+            <button class="secondary-btn" type="button" data-print-hoin>Bluetooth HOIN</button>
+            <button class="secondary-btn" type="button" data-configure-hoin>Настроить HOIN</button>
+            <p class="printer-hint">${helpers.escapeHtml(printerStatus.message)}</p>
+            ${settings.lastDeviceName ? `<small class="printer-hint">Последний принтер: ${helpers.escapeHtml(settings.lastDeviceName)}</small>` : ""}
+        </div>
     `;
     document.getElementById("posModal").hidden = false;
+    bindReceiptPrintActions(receipt);
+}
+
+function bindReceiptPrintActions(receipt) {
+    document.querySelector("[data-print-browser]")?.addEventListener("click", () => window.print());
+    document.querySelector("[data-print-hoin]")?.addEventListener("click", (event) => printReceiptWithHoin(receipt, event.currentTarget));
+    document.querySelector("[data-configure-hoin]")?.addEventListener("click", (event) => configureHoinPrinter(event.currentTarget));
+    document.querySelector("[data-hoin-paper-width]")?.addEventListener("change", (event) => {
+        saveHoinPrinterSettings({ paperWidth: Number(event.currentTarget.value || 80) });
+    });
+}
+
+async function printReceiptWithHoin(receipt, button) {
+    const settings = saveHoinPrinterSettings({
+        paperWidth: Number(document.querySelector("[data-hoin-paper-width]")?.value || 80),
+    });
+    const text = buildReceiptPrinterText(receipt, currentCompany, settings);
+
+    await runPrinterAction(button, "Отправляю...", async () => {
+        await printTextToHoinBluetooth(text, settings);
+        helpers.showToast("Чек отправлен на HOIN");
+    });
+}
+
+async function configureHoinPrinter(button) {
+    saveHoinPrinterSettings({
+        paperWidth: Number(document.querySelector("[data-hoin-paper-width]")?.value || 80),
+    });
+
+    await runPrinterAction(button, "Подключение...", async () => {
+        const settings = await selectHoinPrinter();
+        helpers.showToast(`HOIN подключен: ${settings.lastDeviceName}`);
+    });
+}
+
+async function runPrinterAction(button, pendingText, action) {
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = pendingText;
+
+    try {
+        await action();
+    } catch (error) {
+        helpers.showToast(error.message || "Не удалось подключиться к принтеру");
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
 }
 
 function showReceiptList(status) {

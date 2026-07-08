@@ -1874,6 +1874,44 @@ textarea {
     margin: 0 auto;
 }
 
+.receipt-print-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.receipt-printer-setting {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: 6px;
+    color: var(--muted);
+    font-weight: 800;
+}
+
+.receipt-printer-setting select {
+    min-height: 46px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: var(--card);
+    color: var(--text);
+    font: inherit;
+}
+
+.printer-hint {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+    .receipt-print-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media print {
     @page {
         size: 80mm auto;
